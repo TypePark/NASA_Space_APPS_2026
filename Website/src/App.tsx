@@ -27,7 +27,6 @@ const ROUTES: Record<string, Screen> = {
   "#/case": "case",
   "#/method": "method",
   "#/map3d": "map3d",
-  "#/map3d": "map3d",
 };
 const HASH: Record<Screen, string> = {
   welcome: "#/",
@@ -35,7 +34,6 @@ const HASH: Record<Screen, string> = {
   explore: "#/explore",
   case: "#/case",
   method: "#/method",
-  map3d: "#/map3d",
   map3d: "#/map3d",
 };
 
