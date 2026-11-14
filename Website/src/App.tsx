@@ -27,6 +27,7 @@ const ROUTES: Record<string, Screen> = {
   "#/case": "case",
   "#/method": "method",
   "#/map3d": "map3d",
+  "#/map3d": "map3d",
 };
 const HASH: Record<Screen, string> = {
   welcome: "#/",
@@ -34,6 +35,7 @@ const HASH: Record<Screen, string> = {
   explore: "#/explore",
   case: "#/case",
   method: "#/method",
+  map3d: "#/map3d",
   map3d: "#/map3d",
 };
 
@@ -71,10 +73,21 @@ export default function App() {
       // Picking a ready-made question replaces a custom choice of months.
       if (patch.variable && patch.custom === undefined) next.custom = null;
       // A new question, place or record starts from the full record again.
-      if (patch.periodMode === undefined && (patch.variable || patch.custom || patch.region || patch.dataset)) next.periodMode = "full";
+      if (
+        patch.periodMode === undefined &&
+        (patch.variable || patch.custom || patch.region || patch.dataset)
+      )
+        next.periodMode = "full";
       return normalise(next);
     });
-    if (patch.variable || patch.custom || patch.region || patch.dataset || patch.periodMode === "explore") setCard(0);
+    if (
+      patch.variable ||
+      patch.custom ||
+      patch.region ||
+      patch.dataset ||
+      patch.periodMode === "explore"
+    )
+      setCard(0);
   }, []);
 
   /** Open one step of the tour: put the app in the state that step starts from. */
@@ -83,7 +96,14 @@ export default function App() {
       const step = TOUR[index];
       const next = normalise({ ...DEFAULT_SETTINGS, ...step.settings });
       setSettings(next);
-      setCard(step.card ? Math.max(0, buildView(next).cards.findIndex((c) => c.id === step.card)) : 0);
+      setCard(
+        step.card
+          ? Math.max(
+              0,
+              buildView(next).cards.findIndex((c) => c.id === step.card),
+            )
+          : 0,
+      );
       setPanelOpen(false);
       setGlossaryTerm(null);
       setTour(index);
@@ -104,12 +124,26 @@ export default function App() {
   const taskDone = step?.task ? step.task.done(context) : false;
   const last = tour !== null && tour === TOUR.length - 1;
 
-  const nav: NavKey = tour !== null ? "tour" : screen === "explore" ? "explore" : screen === "method" ? "method" : screen === "map3d" ? "map3d" : null;
+  const nav: NavKey =
+    tour !== null
+      ? "tour"
+      : screen === "explore"
+        ? "explore"
+        : screen === "method"
+          ? "method"
+          : screen === "map3d"
+            ? "map3d"
+            : null;
 
   return (
     <div className={tour !== null ? "app has-tour" : "app"}>
       {screen !== "welcome" && (
-        <TopBar active={nav} onExplore={() => go("explore")} onTour={() => openStep(0)} onGlossary={() => openGlossary("p_value")} />
+        <TopBar
+          active={nav}
+          onExplore={() => go("explore")}
+          onTour={() => openStep(0)}
+          onGlossary={() => openGlossary("p_value")}
+        />
       )}
 
       {screen === "welcome" && (
@@ -120,7 +154,13 @@ export default function App() {
             go("explore");
           }}
           onVariable={(variable) => {
-            change({ custom: { variable, months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] }, region: "cyprus_whole" });
+            change({
+              custom: {
+                variable,
+                months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+              },
+              region: "cyprus_whole",
+            });
             go("explore");
           }}
         />
@@ -134,7 +174,11 @@ export default function App() {
           onChange={change}
           onOpen={() => {
             // A question with no data for the chosen place uses the whole island.
-            change({ region: view.region.id, dataset: view.dataset, periodMode: "full" });
+            change({
+              region: view.region.id,
+              dataset: view.dataset,
+              periodMode: "full",
+            });
             setSetupStep(1);
             go("explore");
           }}
@@ -171,6 +215,8 @@ export default function App() {
       )}
 
       {screen === "method" && <Method />}
+
+      {screen === "map3d" && <Map3D />}
 
       {screen === "map3d" && <Map3D />}
 
