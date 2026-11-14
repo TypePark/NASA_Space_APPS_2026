@@ -14,9 +14,14 @@ interface WelcomeProps {
 
 // Everything on this page that names data is read from the data itself.
 const YEARS = longestRecordYears();
-const VARIABLES = BASE_VARS.filter((b) => SERIES.some((s) => s.variable === b.id));
+const VARIABLES = BASE_VARS.filter((b) =>
+  SERIES.some((s) => s.variable === b.id),
+);
 const SOURCES = [...new Set(SERIES.map((s) => `NASA ${s.dataset_name}`))];
-const listOf = (items: string[]) => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
+const listOf = (items: string[]) =>
+  items.length < 2
+    ? items.join("")
+    : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 
 export default function Welcome({ onTour, onPlace, onVariable }: WelcomeProps) {
   return (
@@ -43,18 +48,28 @@ export default function Welcome({ onTour, onPlace, onVariable }: WelcomeProps) {
       </header>
 
       <div className="welcome-hero">
-        <span className="kicker">A data detective tool · NASA Space Apps 2026</span>
-        <h1 className="display">Is Cyprus’s climate changing? Investigate it with NASA data.</h1>
+        <span className="kicker">
+          A data detective tool · NASA Space Apps 2026
+        </span>
+        <h1 className="display">
+          Is Cyprus’s climate changing? Investigate it with NASA data.
+        </h1>
         <p className="lead muted">
-          Pick a question and a place. We show you up to {YEARS} years of NASA satellite and model data on{" "}
-          {listOf(VARIABLES.map((v) => v.noun))}, how fast each is changing, and whether the change is real or still hidden in the noise.
+          Pick a question and a place. We show you up to {YEARS} years of NASA
+          satellite and model data on {listOf(VARIABLES.map((v) => v.noun))},
+          how fast each is changing, and whether the change is real or still
+          hidden in the noise.
         </p>
         <div className="row">
           <a className="btn btn-primary btn-lg" href="#/setup">
             Start an investigation
             <Icon name="arrowR" strokeWidth={2} />
           </a>
-          <button type="button" className="btn btn-outline btn-lg" onClick={onTour}>
+          <button
+            type="button"
+            className="btn btn-outline btn-lg"
+            onClick={onTour}
+          >
             <Icon name="play" />
             Take the guided tour
           </button>
@@ -76,7 +91,7 @@ export default function Welcome({ onTour, onPlace, onVariable }: WelcomeProps) {
           ))}
         </div>
 
-        <div className="welcome-places">
+        {/* <div className="welcome-places">
           <span className="small strong">Explore a variable</span>
           <div className="row row-tight">
             {VARIABLES.map((v) => (
@@ -98,9 +113,12 @@ export default function Welcome({ onTour, onPlace, onVariable }: WelcomeProps) {
               </button>
             ))}
           </div>
-        </div>
+        </div> */}
 
-        <p className="tiny muted">Data: {listOf(SOURCES)}. Terrain on the 3D map: the NISAR elevation model.</p>
+        <p className="tiny muted">
+          Data: {listOf(SOURCES)}. Terrain on the 3D map: the NISAR elevation
+          model.
+        </p>
       </div>
     </section>
   );
