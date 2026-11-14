@@ -1,5 +1,5 @@
-import { BASE_VARS, CASES, DATASET_ROLE, MONTHS_LONG, MONTHS_SHORT, REGIONS, VARS } from "./content";
-import type { BaseVariable, CardId, CaseId, IconName, RegionDef, VariableDef } from "./content";
+import { BASE_VARS, DATASET_ROLE, MONTHS_LONG, MONTHS_SHORT, REGIONS, VARS } from "./content";
+import type { BaseVariable, CardId, IconName, RegionDef, VariableDef } from "./content";
 import { getRecord } from "./data/records";
 import type { DatasetId, RegionId, ResultRecord, Selection, VariableId } from "./data/records";
 import { SERIES, datasetsFor, findSeries, regionalDataset, regionsFor, yearsOf } from "./data/series";
@@ -155,10 +155,6 @@ export function resolve(s: Settings): { region: RegionId; dataset: DatasetId } {
   return { region, dataset: sets.includes(s.dataset) ? s.dataset : sets[0] };
 }
 
-export function settingsForCase(id: CaseId): Settings {
-  const c = CASES[id];
-  return { ...DEFAULT_SETTINGS, region: c.region, variable: c.variable, dataset: c.dataset };
-}
 
 // ---------- the view of one record ----------
 
@@ -182,6 +178,24 @@ export interface RegionRow {
   value: string;
   badge: Badge;
   fill: string;
+}
+
+export interface CompareRow {
+  /** Variable key, e.g. "rainfall". */
+  id: string;
+  name: string;
+  icon: IconName;
+  /** True for the variable currently shown. */
+  current: boolean;
+  sub: string;
+  value: string;
+  direction: IconName;
+  badge: Badge;
+}
+
+/** "a", "a and b", "a, b and c". */
+function listOf(items: string[]): string {
+  return items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
 
 export interface View {
@@ -223,6 +237,8 @@ export interface View {
   mapFills: Record<string, string>;
   mapLabels: Record<string, string>;
   second: { rows: { name: string; sub: string; value: string; badge: Badge }[]; note: string } | null;
+  /** The same place and months for every variable. */
+  compare: { rows: CompareRow[]; note: string };
   rhythmText: string;
   cards: { id: CardId; title: string }[];
 }
@@ -234,14 +250,6 @@ function trendFill(rec: ResultRecord): string {
   return rec.significant ? "var(--wet-strong)" : "var(--wet)";
 }
 
-const RHYTHM_TEXT: Record<string, (rec: ResultRecord) => string> = {
-  rainfall: () =>
-    "Most rain falls from October to March, and summers are almost dry. Adding up whole years and seasons keeps this regular rhythm from hiding a trend.",
-  temperature: (rec) => {
-    const clim = rec.monthly_climatology;
-    return `Summers are about ${Math.round(Math.max(...clim) - Math.min(...clim))} ${unitOf(rec)} warmer than winters. Comparing the same months each year keeps that regular rhythm from hiding the trend.`;
-  },
-};
 
 export function buildView(s: Settings): View {
   const vdef = activeDef(s);
@@ -298,11 +306,11 @@ export function buildView(s: Settings): View {
 
   const cautions: string[] = [];
   if (rec.significant && rec.p_value >= 0.01)
-    cautions.push(`This result is close to the line (p = ${pShow(rec.p_value)}). We tested many places and seasons, and a few can pass by chance.`);
+    cautions.push(`This result is close to the line (p = ${pShow(rec.p_value)}). We tested many places and seasons, and about 1 test in 20 passes by luck, so treat this one with care.`);
   if (rec.significant && rec.dependent && rec.p_adjusted >= 0.05)
     cautions.push(`Allowing for years that depend on each other, the p-value rises to ${pShow(rec.p_adjusted)}, which is not significant.`);
-  if (vdef.id === "custom")
-    cautions.push("You chose your own months. The more combinations you try, the more likely one passes the test by chance.");
+  if (vdef.id === "custom" && vdef.months.length < 12)
+    cautions.push("You picked these months yourself. If you keep trying different months until one shows “Significant”, that result is probably luck: about 1 try in 20 passes even when nothing is changing.");
 
   // chosen period, recalculated in the browser
   const window = explore ? analyzeWindow(years, rec.values, startYear, endYear, MIN_YEARS) : null;
@@ -405,14 +413,49 @@ export function buildView(s: Settings): View {
     }
   }
 
-  const rhythmText = (
-    RHYTHM_TEXT[base.id] ??
-    (() => "The chart shows the usual value for each month. Comparing the same months each year keeps this regular rhythm from hiding a trend.")
-  )(rec);
+  // compare variables: the same place and months for each one
+  const compareRows: (CompareRow & { noun: string; falling: boolean })[] = [];
+  for (const bv of BASE_VARS) {
+    const rg = regionsFor(bv.id).includes(rec.region_id) ? rec.region_id : "cyprus_whole";
+    const def = bv.id === base.id ? vdef : (presetFor(bv.id, vdef.months) ?? activeDef({ ...s, custom: { variable: bv.id, months: vdef.months } }));
+    const r = getRecord(rg, selectionOf(def), bv.id === base.id ? dataset : datasetsFor(bv.id, rg)[0]);
+    if (!r) continue;
+    const rp = r.trend_percent_per_decade;
+    compareRows.push({
+      id: bv.id,
+      name: bv.name,
+      icon: bv.icon,
+      current: bv.id === base.id,
+      sub: `${r.region_id !== rec.region_id ? `${r.region} · ` : ""}NASA ${r.dataset}, ${periodText(r)}`,
+      value: `${formatRate(r)} per decade` + (rp !== null ? ` (${signed(rp, 1)}%)` : ""),
+      direction: r.trend_per_decade < 0 ? "down" : "trend",
+      badge: badgeFor(r.status),
+      noun: bv.noun,
+      falling: r.trend_per_decade < 0,
+    });
+  }
+  const up = compareRows.filter((x) => !x.falling).map((x) => x.noun);
+  const down = compareRows.filter((x) => x.falling).map((x) => x.noun);
+  const verb = (n: number) => (n === 1 ? "is" : "are");
+  const sentence =
+    up.length && down.length
+      ? `${listOf(up)} ${verb(up.length)} rising while ${listOf(down)} ${verb(down.length)} falling.`
+      : `${listOf(up.length ? up : down)} ${verb(compareRows.length)} all ${up.length ? "rising" : "falling"}.`;
+  const compare: View["compare"] = {
+    rows: compareRows,
+    note: `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)} Check each badge: a direction only counts as a trend when it is significant.`,
+  };
+
+  // yearly rhythm: read the highest and lowest months from the data
+  const clim = rec.monthly_climatology;
+  const hiMonth = MONTHS_LONG[clim.indexOf(Math.max(...clim))];
+  const loMonth = MONTHS_LONG[clim.indexOf(Math.min(...clim))];
+  const rhythmText = `${base.name} is usually highest in ${hiMonth} and lowest in ${loMonth}. Comparing the same months each year keeps this regular rhythm from hiding a trend.`;
 
   const cards: View["cards"] = [
     { id: "series", title: rec.variable_label },
     { id: "sure", title: "How sure are we?" },
+    { id: "compare", title: "Compare variables" },
     { id: "years", title: "Does a longer record change the answer?" },
     { id: "rhythm", title: "The yearly rhythm" },
   ];
@@ -452,6 +495,7 @@ export function buildView(s: Settings): View {
     mapFills,
     mapLabels,
     second,
+    compare,
     rhythmText,
     cards,
   };
@@ -513,13 +557,18 @@ export function buildAnswers(v: View): Answer[] {
     { q: "Where?", text: where, icon: "pin", tone: "plain" },
     { q: "How much? (Sen’s slope)", text: howMuch, icon: v.direction.icon, tone: "plain" },
     { q: "Is it significant? (Mann-Kendall test)", text: significant, icon: v.badge.icon, tone: rec.status },
+    { q: "How does it compare with the other variables?", text: v.compare.note, icon: "layers", tone: "plain" },
   ];
 }
 
 /** Every ready-made question, for every place and record that has data. */
 export function allResultRows() {
   const rows = [];
-  for (const def of VARS) {
+  // The ready-made questions, plus a whole-year entry for every other variable.
+  const extra = BASE_VARS.filter((bv) => !VARS.some((v) => v.base === bv.id)).map((bv) =>
+    activeDef({ ...DEFAULT_SETTINGS, custom: { variable: bv.id, months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] } }),
+  );
+  for (const def of [...VARS, ...extra]) {
     for (const s of SERIES.filter((x) => x.variable === def.base)) {
       const r = getRecord(s.region_id, selectionOf(def), s.dataset);
       if (!r) continue;
@@ -532,14 +581,72 @@ export function allResultRows() {
         range: `${signed(r.range_per_decade[0], rateDigits(r))} to ${signed(r.range_per_decade[1], rateDigits(r))}`,
         p: pShow(r.p_value),
         badge: badgeFor(r.status),
-        sortKey: (s.dataset === "merra2" ? "0" : "1") + s.region_id + def.id,
+        sortKey: (s.dataset === "merra2" ? "0" : s.dataset === "imerg" ? "1" : "2") + s.region_id + def.id,
       });
     }
   }
   return rows.sort((a, b) => (a.sortKey < b.sortKey ? -1 : 1));
 }
 
-/** The record behind one ready-made question (used by the tests and the Rain map). */
+/** The record behind one ready-made question (used by the tests). */
 export function presetRecord(region: RegionId, variable: VariableId, dataset: DatasetId): ResultRecord | undefined {
   return getRecord(region, selectionOf(variableDef(variable)), dataset);
+}
+
+// ---------- facts read from the data, for wording ----------
+
+function spread(values: number[]): { mean: number; sd: number } {
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const sd = Math.sqrt(values.reduce((a, b) => a + (b - mean) ** 2, 0) / (values.length - 1));
+  return { mean, sd };
+}
+
+const MONTH_ABBR = MONTHS_SHORT;
+
+/** "Jan 1998 – Sep 2025" for one variable in one record, read from its series. */
+export function coverage(variable: string, dataset: string): string {
+  const all = SERIES.filter((x) => x.variable === variable && x.dataset === dataset);
+  if (!all.length) return "";
+  const first = Math.min(...all.map((x) => x.start[0] * 12 + x.start[1] - 1));
+  const last = Math.max(...all.map((x) => x.start[0] * 12 + x.start[1] - 1 + x.values.length - 1));
+  const show = (m: number) => `${MONTH_ABBR[m % 12]} ${Math.floor(m / 12)}`;
+  return `${show(first)} – ${show(last)}`;
+}
+
+/** The longest record in the app, in complete years. */
+export function longestRecordYears(): number {
+  return Math.max(...VARS.flatMap((def) => SERIES.filter((x) => x.variable === def.base).map((x) => getRecord(x.region_id, selectionOf(def), x.dataset)?.values.length ?? 0)));
+}
+
+let factCache: Record<string, string> | null = null;
+
+/** Numbers quoted in the glossary and the limitations, all calculated from the data. */
+export function facts(): Record<string, string> {
+  if (factCache) return factCache;
+  const yearly = (variable: string) =>
+    SERIES.filter((x) => x.variable === variable)
+      .map((x) => getRecord(x.region_id, { variable, months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], key: "year", label: "" }, x.dataset))
+      .filter((r): r is ResultRecord => !!r);
+  const rain = yearly("rainfall").map((r) => {
+    const { mean, sd } = spread(r.values);
+    return Math.round((sd / mean) * 100);
+  });
+  const temp = yearly("temperature").map((r) => spread(r.values).sd);
+  const lo = Math.min(...rain);
+  const hi = Math.max(...rain);
+  const startOf = (dataset: string) => String(Math.min(...SERIES.filter((x) => x.dataset === dataset).map((x) => x.start[0])));
+  factCache = {
+    rain_swing: lo === hi ? `${lo}%` : `${lo}–${hi}%`,
+    temp_swing: `${Math.max(...temp).toFixed(1)} °C`,
+    imerg_start: startOf("imerg"),
+    merra2_start: startOf("merra2"),
+    fldas_start: startOf("fldas"),
+  };
+  return factCache;
+}
+
+/** Replace {name} in a sentence with the matching fact. */
+export function fill(text: string): string {
+  const f = facts();
+  return text.replace(/\{(\w+)\}/g, (whole, key: string) => f[key] ?? whole);
 }

@@ -1,15 +1,24 @@
 import Brand from "../components/Brand";
 import Icon from "../components/Icon";
 import RegionMap from "../components/RegionMap";
-import { HOW_STEPS, REGIONS } from "../content";
+import { BASE_VARS, HOW_STEPS, REGIONS } from "../content";
 import type { RegionId } from "../data/records";
+import { SERIES } from "../data/series";
+import { longestRecordYears } from "../model";
 
 interface WelcomeProps {
-  onDemo: () => void;
+  onTour: () => void;
   onPlace: (region: RegionId) => void;
+  onVariable: (variable: string) => void;
 }
 
-export default function Welcome({ onDemo, onPlace }: WelcomeProps) {
+// Everything on this page that names data is read from the data itself.
+const YEARS = longestRecordYears();
+const VARIABLES = BASE_VARS.filter((b) => SERIES.some((s) => s.variable === b.id));
+const SOURCES = [...new Set(SERIES.map((s) => `NASA ${s.dataset_name}`))];
+const listOf = (items: string[]) => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
+
+export default function Welcome({ onTour, onPlace, onVariable }: WelcomeProps) {
   return (
     <section className="welcome">
       <div className="welcome-map" aria-hidden="true">
@@ -24,8 +33,8 @@ export default function Welcome({ onDemo, onPlace }: WelcomeProps) {
           <a className="nav-link" href="#/explore">
             Explore
           </a>
-          <a className="nav-link" href="#/rain-map">
-            Rain map
+          <a className="nav-link" href="#/map3d">
+            3D Map
           </a>
           <a className="btn btn-outline btn-sm" href="#/method">
             Data &amp; Method
@@ -37,17 +46,17 @@ export default function Welcome({ onDemo, onPlace }: WelcomeProps) {
         <span className="kicker">A data detective tool · NASA Space Apps 2026</span>
         <h1 className="display">Is Cyprus’s climate changing? Investigate it with NASA data.</h1>
         <p className="lead muted">
-          Pick a question and a place. We show you up to 46 years of satellite and model data, how fast things are
-          changing, and whether the change is real or still hidden in the noise.
+          Pick a question and a place. We show you up to {YEARS} years of NASA satellite and model data on{" "}
+          {listOf(VARIABLES.map((v) => v.noun))}, how fast each is changing, and whether the change is real or still hidden in the noise.
         </p>
         <div className="row">
           <a className="btn btn-primary btn-lg" href="#/setup">
             Start an investigation
             <Icon name="arrowR" strokeWidth={2} />
           </a>
-          <button type="button" className="btn btn-outline btn-lg" onClick={onDemo}>
+          <button type="button" className="btn btn-outline btn-lg" onClick={onTour}>
             <Icon name="play" />
-            Watch a case
+            Take the guided tour
           </button>
         </div>
       </div>
@@ -68,6 +77,18 @@ export default function Welcome({ onDemo, onPlace }: WelcomeProps) {
         </div>
 
         <div className="welcome-places">
+          <span className="small strong">Explore a variable</span>
+          <div className="row row-tight">
+            {VARIABLES.map((v) => (
+              <button key={v.id} type="button" className="pill" onClick={() => onVariable(v.id)}>
+                <Icon name={v.icon} size={16} className="accent-ink" />
+                {v.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="welcome-places">
           <span className="small strong">Explore a place</span>
           <div className="row row-tight">
             {REGIONS.map((r) => (
@@ -79,9 +100,7 @@ export default function Welcome({ onDemo, onPlace }: WelcomeProps) {
           </div>
         </div>
 
-        <p className="tiny muted">
-          Data: NASA GPM IMERG V07 (rainfall), NASA MERRA-2 (rainfall and air temperature) and the NISAR elevation model (terrain).
-        </p>
+        <p className="tiny muted">Data: {listOf(SOURCES)}. Terrain on the 3D map: the NISAR elevation model.</p>
       </div>
     </section>
   );

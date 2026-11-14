@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import stored from "../data/all_results.json";
 import { getRecord } from "../data/records";
 import type { DatasetId, RegionId, VariableId } from "../data/records";
-import { presetRecord } from "../model";
+import { DEFAULT_SETTINGS, buildView, facts, normalise, presetRecord } from "../model";
+import { TOUR } from "../tour";
 import { aggregate, seasonStart } from "./aggregate";
 import { analyzeWindow, pValueByLength } from "./trendStats";
 
@@ -78,5 +79,28 @@ describe("periods", () => {
     const curve = pValueByLength(r.year_numeric, r.values);
     expect(curve[0].nYears).toBe(15);
     expect(curve[curve.length - 1].nYears).toBe(r.values.length);
+  });
+});
+
+describe("guided tour", () => {
+  it("every step opens in a valid state and has something to say", () => {
+    TOUR.forEach((step) => {
+      const view = buildView(normalise({ ...DEFAULT_SETTINGS, ...step.settings }));
+      const card = step.card ?? "series";
+      if (step.card) expect(view.cards.map((c) => c.id)).toContain(step.card);
+      const context = { view, card, screen: step.screen ?? "explore" };
+      expect(step.text(context).length).toBeGreaterThan(20);
+      // A task must not already be complete when its step opens.
+      if (step.task) expect(step.task.done(context)).toBe(false);
+    });
+  });
+});
+
+describe("facts quoted in the wording", () => {
+  it("are calculated from the data", () => {
+    const f = facts();
+    expect(f.rain_swing).toMatch(/^\d+(–\d+)?%$/);
+    expect(f.temp_swing).toMatch(/^\d\.\d °C$/);
+    expect(Number(f.imerg_start)).toBeGreaterThan(1990);
   });
 });

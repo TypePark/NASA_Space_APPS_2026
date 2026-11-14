@@ -2,7 +2,7 @@ import logo from "../assets/logo.svg";
 import Formulas from "../components/Formulas";
 import Icon from "../components/Icon";
 import { DATASETS, DEM_LICENSE, LIMITS, METHOD_STEPS, REFERENCES, STUDY_AREA, TEAM } from "../content";
-import { allResultRows } from "../model";
+import { allResultRows, coverage, fill } from "../model";
 
 const ROWS = allResultRows();
 
@@ -51,7 +51,7 @@ export default function Method() {
                 <tr key={d.name + d.what}>
                   <td className="strong">{d.name}</td>
                   <td>{d.what}</td>
-                  <td>{d.period}</td>
+                  <td>{d.period ?? coverage(d.variable ?? "", d.dataset ?? "")}</td>
                   <td className="muted">{d.detail}</td>
                 </tr>
               ))}
@@ -140,7 +140,7 @@ export default function Method() {
         </h2>
         <ul className="limits small muted">
           {LIMITS.map((l) => (
-            <li key={l}>{l}</li>
+            <li key={l}>{fill(l)}</li>
           ))}
         </ul>
       </section>

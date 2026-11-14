@@ -3,37 +3,38 @@ import "./App.css";
 import Glossary from "./components/Glossary";
 import TopBar from "./components/TopBar";
 import type { NavKey } from "./components/TopBar";
-import { CASES } from "./content";
-import type { CaseId } from "./content";
+import TourBar from "./components/TourBar";
 import type { RegionId } from "./data/records";
-import { DEFAULT_SETTINGS, buildView, normalise, settingsForCase } from "./model";
+import { DEFAULT_SETTINGS, buildView, normalise } from "./model";
 import type { Settings } from "./model";
 import CaseFile from "./screens/CaseFile";
 import Explorer from "./screens/Explorer";
-import type { DemoBar } from "./screens/Explorer";
+import Map3D from "./screens/Map3D";
 import Method from "./screens/Method";
-import RainMap from "./screens/RainMap";
 import Setup from "./screens/Setup";
 import Welcome from "./screens/Welcome";
+import { TOUR } from "./tour";
 
-type Screen = "welcome" | "setup" | "explore" | "rain" | "case" | "method";
+type Screen = "welcome" | "setup" | "explore" | "case" | "method" | "map3d";
 
 const ROUTES: Record<string, Screen> = {
   "": "welcome",
   "#/": "welcome",
   "#/setup": "setup",
   "#/explore": "explore",
-  "#/rain-map": "rain",
+  // The old Rain map address now opens the 3D map.
+  "#/rain-map": "map3d",
   "#/case": "case",
   "#/method": "method",
+  "#/map3d": "map3d",
 };
 const HASH: Record<Screen, string> = {
   welcome: "#/",
   setup: "#/setup",
   explore: "#/explore",
-  rain: "#/rain-map",
   case: "#/case",
   method: "#/method",
+  map3d: "#/map3d",
 };
 
 function subscribeHash(cb: () => void) {
@@ -58,15 +59,13 @@ export default function App() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [setupStep, setSetupStep] = useState(1);
   const [glossaryTerm, setGlossaryTerm] = useState<string | null>(null);
-  const [demo, setDemo] = useState<{ id: CaseId; step: number } | null>(null);
+  /** Index of the guided tour's current step, or null when the tour is not running. */
+  const [tour, setTour] = useState<number | null>(null);
 
   const view = useMemo(() => buildView(settings), [settings]);
-  // The demo only runs on the Explorer; leaving the screen ends it.
-  const activeDemo = screen === "explore" ? demo : null;
+  const cardIndex = Math.max(0, Math.min(view.cards.length - 1, card));
 
-  /** Any change made by the user ends the demo and returns the deck to card 1. */
   const change = useCallback((patch: Partial<Settings>) => {
-    setDemo(null);
     setSettings((s) => {
       const next = { ...s, ...patch };
       // Picking a ready-made question replaces a custom choice of months.
@@ -78,13 +77,17 @@ export default function App() {
     if (patch.variable || patch.custom || patch.region || patch.dataset || patch.periodMode === "explore") setCard(0);
   }, []);
 
-  const startDemo = useCallback(
-    (id: CaseId) => {
-      setSettings(settingsForCase(id));
-      setDemo({ id, step: 1 });
+  /** Open one step of the tour: put the app in the state that step starts from. */
+  const openStep = useCallback(
+    (index: number) => {
+      const step = TOUR[index];
+      const next = normalise({ ...DEFAULT_SETTINGS, ...step.settings });
+      setSettings(next);
+      setCard(step.card ? Math.max(0, buildView(next).cards.findIndex((c) => c.id === step.card)) : 0);
       setPanelOpen(false);
       setGlossaryTerm(null);
-      go("explore");
+      setTour(index);
+      go(step.screen ?? "explore");
     },
     [go],
   );
@@ -95,59 +98,29 @@ export default function App() {
   }, []);
   const closeGlossary = useCallback(() => setGlossaryTerm(null), []);
 
-  // ---------- demo caption ----------
-  let demoBar: DemoBar | null = null;
-  let shownCard = card;
-  if (activeDemo) {
-    const cs = CASES[activeDemo.id];
-    const step = cs.steps[activeDemo.step - 1];
-    const idx = view.cards.findIndex((c) => c.id === step.card);
-    shownCard = idx < 0 ? 0 : idx;
-    const last = activeDemo.step >= cs.steps.length;
-    demoBar = {
-      label: cs.label,
-      step: activeDemo.step,
-      count: cs.steps.length,
-      text: step.text,
-      target: step.target,
-      nextLabel: !last ? "Next" : activeDemo.id === "A" ? "Next case" : "Explore on your own",
-      onBack: () => setDemo({ id: activeDemo.id, step: activeDemo.step - 1 }),
-      onNext: () => {
-        if (!last) setDemo({ id: activeDemo.id, step: activeDemo.step + 1 });
-        else if (activeDemo.id === "A") startDemo("B");
-        else {
-          setDemo(null);
-          setCard(0);
-        }
-      },
-      onExit: () => {
-        setDemo(null);
-        setCard(shownCard);
-      },
-    };
-  }
+  // ---------- guided tour ----------
+  const step = tour === null ? null : TOUR[tour];
+  const context = { view, card: view.cards[cardIndex].id, screen };
+  const taskDone = step?.task ? step.task.done(context) : false;
+  const last = tour !== null && tour === TOUR.length - 1;
 
-  const nav: NavKey = activeDemo ? "demo" : screen === "explore" ? "explore" : screen === "rain" ? "rain" : screen === "method" ? "method" : null;
+  const nav: NavKey = tour !== null ? "tour" : screen === "explore" ? "explore" : screen === "method" ? "method" : screen === "map3d" ? "map3d" : null;
 
   return (
-    <div className="app">
+    <div className={tour !== null ? "app has-tour" : "app"}>
       {screen !== "welcome" && (
-        <TopBar
-          active={nav}
-          onExplore={() => {
-            setDemo(null);
-            go("explore");
-          }}
-          onDemo={() => startDemo("A")}
-          onGlossary={() => openGlossary("p_value")}
-        />
+        <TopBar active={nav} onExplore={() => go("explore")} onTour={() => openStep(0)} onGlossary={() => openGlossary("p_value")} />
       )}
 
       {screen === "welcome" && (
         <Welcome
-          onDemo={() => startDemo("A")}
+          onTour={() => openStep(0)}
           onPlace={(region: RegionId) => {
             change({ region, variable: "annual_total", dataset: "imerg" });
+            go("explore");
+          }}
+          onVariable={(variable) => {
+            change({ custom: { variable, months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] }, region: "cyprus_whole" });
             go("explore");
           }}
         />
@@ -160,7 +133,7 @@ export default function App() {
           onStep={setSetupStep}
           onChange={change}
           onOpen={() => {
-            // Temperature exists for the whole island only.
+            // A question with no data for the chosen place uses the whole island.
             change({ region: view.region.id, dataset: view.dataset, periodMode: "full" });
             setSetupStep(1);
             go("explore");
@@ -171,28 +144,14 @@ export default function App() {
       {screen === "explore" && (
         <Explorer
           view={view}
-          card={shownCard}
-          onCard={(i) => {
-            setDemo(null);
-            setCard(i);
-          }}
-          panelOpen={panelOpen && !activeDemo}
-          onPanel={(open) => {
-            setDemo(null);
-            setPanelOpen(open);
-          }}
+          card={cardIndex}
+          onCard={setCard}
+          panelOpen={panelOpen}
+          onPanel={setPanelOpen}
           onChange={change}
           onTerm={openGlossary}
-          demo={demoBar}
-        />
-      )}
-
-      {screen === "rain" && (
-        <RainMap
-          onOpen={(region: RegionId) => {
-            change({ region, variable: "annual_total", dataset: "imerg" });
-            go("explore");
-          }}
+          highlight={step?.target ?? null}
+          tourStep={tour}
         />
       )}
 
@@ -213,7 +172,23 @@ export default function App() {
 
       {screen === "method" && <Method />}
 
+      {screen === "map3d" && <Map3D />}
+
       {glossaryTerm && <Glossary term={glossaryTerm} onClose={closeGlossary} />}
+
+      {step && tour !== null && (
+        <TourBar
+          part={step.part}
+          step={tour + 1}
+          count={TOUR.length}
+          text={step.text(context)}
+          doneText={taskDone && step.task ? step.task.after(context) : null}
+          nextLabel={last ? "Finish" : step.task && !taskDone ? "Skip" : "Next"}
+          onBack={() => openStep(tour - 1)}
+          onNext={() => (last ? setTour(null) : openStep(tour + 1))}
+          onExit={() => setTour(null)}
+        />
+      )}
     </div>
   );
 }

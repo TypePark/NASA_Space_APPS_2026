@@ -1,7 +1,7 @@
 import raw from "./monthly.json";
 
 export type RegionId = "cyprus_whole" | "troodos" | "nicosia" | "limassol" | "larnaca" | "paphos";
-export type DatasetId = "imerg" | "merra2";
+export type DatasetId = "imerg" | "merra2" | "fldas";
 
 /** One monthly series from NASA Giovanni, as written by analysis/build_monthly.py. */
 export interface MonthlySeries {

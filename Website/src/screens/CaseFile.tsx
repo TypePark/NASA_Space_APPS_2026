@@ -1,4 +1,6 @@
 import Icon from "../components/Icon";
+import { BASE_VARS, NEXT_LEADS } from "../content";
+import { ALL_MONTHS } from "../lib/aggregate";
 import { buildAnswers } from "../model";
 import type { Settings, View } from "../model";
 
@@ -10,19 +12,12 @@ interface CaseFileProps {
 
 export default function CaseFile({ view, onLead, onNewCase }: CaseFileProps) {
   const answers = buildAnswers(view);
-  const lead = view.base.id === "temperature"
-    ? {
-        text: view.rec.significant ? "The heat is clear. Is rainfall changing too?" : "Is rainfall changing?",
-        button: "Check rainfall",
-        patch: { variable: "annual_total", region: "cyprus_whole", dataset: "imerg" } as const,
-      }
-    : {
-        text: view.rec.significant
-          ? "This rainfall trend is significant. Is the heat changing too?"
-          : "Rainfall isn’t proven to be changing. Is the heat?",
-        button: "Check temperature",
-        patch: { variable: "annual_mean_temperature", region: "cyprus_whole", dataset: "merra2" } as const,
-      };
+  // Next lead: the next variable in the list, whole island, whole year.
+  const next = BASE_VARS[(BASE_VARS.findIndex((b) => b.id === view.base.id) + 1) % BASE_VARS.length];
+  const lead = {
+    ...(NEXT_LEADS[next.id] ?? { text: `Now look at ${next.noun}.`, button: `Check ${next.noun}` }),
+    patch: { custom: { variable: next.id, months: ALL_MONTHS }, region: "cyprus_whole" } as const,
+  };
 
   return (
     <main className="page page-narrow casefile">
@@ -41,7 +36,7 @@ export default function CaseFile({ view, onLead, onNewCase }: CaseFileProps) {
         </h1>
       </section>
 
-      <section aria-label="The four questions" className="panel answers">
+      <section aria-label="The verdict" className="panel answers">
         {answers.map((a) => (
           <div key={a.q} className="answer">
             <span className={`round-icon tone-bg-${a.tone}`}>

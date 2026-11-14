@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { GLOSSARY } from "../content";
+import { fill } from "../model";
 import Icon from "./Icon";
 
 interface GlossaryProps {
@@ -43,8 +44,8 @@ export default function Glossary({ term, onClose }: GlossaryProps) {
           {entries.map((g) => (
             <div key={g.id} className={g.id === term ? "glossary-item is-on" : "glossary-item"}>
               <dt>{g.term}</dt>
-              <dd>{g.text}</dd>
-              <dd className="glossary-more">{g.more}</dd>
+              <dd>{fill(g.text)}</dd>
+              <dd className="glossary-more">{fill(g.more)}</dd>
             </div>
           ))}
         </dl>

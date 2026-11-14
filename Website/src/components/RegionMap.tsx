@@ -69,7 +69,7 @@ export default function RegionMap({ fills, labels, selected, onPick, faded = fal
         aria-label={
           faded
             ? undefined
-            : "Map of Cyprus drawn from the NISAR elevation model, with five areas: Troodos, Nicosia / Lefkoşa, Limassol, Larnaca and Paphos."
+            : "Simplified map of Cyprus with five areas: Troodos, Nicosia / Lefkoşa, Limassol, Larnaca and Paphos."
         }
       >
 <defs>

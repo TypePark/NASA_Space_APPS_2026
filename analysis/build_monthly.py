@@ -35,6 +35,8 @@ MERRA_RAIN_SRC = ("NASA MERRA-2 bias-corrected total precipitation (M2TMNXFLX v5
                   "monthly, Giovanni area-averaged over Cyprus")
 MERRA_TEMP_SRC = ("NASA MERRA-2 2-meter air temperature (M2TMNXSLV v5.12.4 T2M), "
                   "monthly, Giovanni area-averaged over Cyprus")
+FLDAS_ET_SRC = ("NASA FLDAS Noah land surface model, total evapotranspiration "
+                "(FLDAS_NOAH01_C_GL_M v001 Evap_tavg), monthly 0.1 degree, Giovanni area-averaged")
 
 
 def mm_per_hour(value, year, month):
@@ -43,7 +45,7 @@ def mm_per_hour(value, year, month):
 
 
 def kg_m2_s(value, year, month):
-    """MERRA-2 rainfall: kg m-2 s-1 -> mm per month."""
+    """A water flux in kg m-2 s-1 (MERRA-2 rainfall, FLDAS evapotranspiration) -> mm per month."""
     return value * 86400 * calendar.monthrange(year, month)[1]
 
 
@@ -63,6 +65,10 @@ SERIES = [
     dict(file="cyprus_merra2_rain", variable="rainfall", dataset="merra2", dataset_name="MERRA-2",
          region_id="cyprus_whole", units="mm", aggregate="sum", percent=True, convert=kg_m2_s,
          source=MERRA_RAIN_SRC, digits=4),
+    # FLDAS evapotranspiration: kg m-2 s-1 -> mm per month. One file per region; missing regions are skipped.
+    *[dict(file=f"{region}_evapotranspiration", variable="evapotranspiration", dataset="fldas", dataset_name="FLDAS",
+           region_id=region, units="mm", aggregate="sum", percent=True, convert=kg_m2_s, source=FLDAS_ET_SRC, digits=4)
+      for region in REGIONS if os.path.exists(os.path.join(RAW, f"{region}_evapotranspiration.csv"))],
     dict(file="cyprus_merra2_temperature", variable="temperature", dataset="merra2", dataset_name="MERRA-2",
          region_id="cyprus_whole", units="°C", aggregate="mean", percent=False, convert=kelvin,
          source=MERRA_TEMP_SRC, digits=3),

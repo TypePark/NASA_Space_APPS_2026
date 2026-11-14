@@ -1,4 +1,4 @@
-import type { DatasetId, RegionId, VariableId } from "./data/records";
+import type { RegionId } from "./data/records";
 
 /** Line icons (SVG path data, 24 × 24 viewBox). */
 export const ICON = {
@@ -66,17 +66,9 @@ export interface RegionDef {
   hint: string;
 }
 
-export type CaseId = "A" | "B";
-export type DemoTarget = "case" | "headline" | "chart" | "numbers" | "deck";
-export type CardId = "series" | "sure" | "years" | "rhythm" | "second";
+export type TourTarget = "case" | "headline" | "badges" | "numbers" | "deck" | "where" | "adjust" | "verdict";
+export type CardId = "series" | "sure" | "compare" | "years" | "rhythm" | "second";
 
-export interface CaseDef {
-  label: string;
-  region: RegionId;
-  variable: VariableId;
-  dataset: DatasetId;
-  steps: { target: DemoTarget; card: CardId; text: string }[];
-}
 
 export interface GlossaryEntry {
   id: string;
@@ -97,6 +89,7 @@ export const VARS: VariableDef[] = [
   { id: "annual_total", base: "rainfall", months: YEAR, label: "Annual rainfall", q: "Is it getting drier overall?", def: "Yearly rainfall: all the rain in a year, added up.", icon: "drop", short: "Yearly rainfall" },
   { id: "wet_season_total", base: "rainfall", months: WET, label: "Wet-season rainfall (Oct–Mar)", q: "Is the rainy season changing?", def: "Rain from October to March, the months that refill reservoirs.", icon: "rain", short: "Wet-season rainfall" },
   { id: "dry_season_total", base: "rainfall", months: DRY, label: "Dry-season rainfall (Apr–Sep)", q: "Is spring and summer rain changing?", def: "Rain from April to September, small amounts that matter for crops.", icon: "sun", short: "Dry-season rainfall" },
+  { id: "annual_evapotranspiration", base: "evapotranspiration", months: YEAR, label: "Annual evapotranspiration", q: "Is the land giving more water back to the air?", def: "Evapotranspiration: the water that soil and plants return to the air, over a whole year.", icon: "layers", short: "Evapotranspiration" },
   { id: "annual_mean_temperature", base: "temperature", months: YEAR, label: "Average air temperature", q: "Is it getting hotter?", def: "The average air temperature over a whole year.", icon: "thermo", short: "Average temperature" },
   { id: "summer_mean_temperature", base: "temperature", months: SUMMER, label: "Summer air temperature (Jun–Aug)", q: "Are summers getting hotter?", def: "The average air temperature in June, July and August.", icon: "sun", short: "Summer temperature" },
 ];
@@ -104,6 +97,7 @@ export const VARS: VariableDef[] = [
 /** The variables offered in the detailed view. Add an entry here when new data is added. */
 export const BASE_VARS: BaseVariable[] = [
   { id: "rainfall", group: "Water", name: "Rainfall", noun: "rainfall", def: "How much rain falls, added up over the months you choose.", icon: "drop", down: "drier", up: "wetter" },
+  { id: "evapotranspiration", group: "Water", name: "Evapotranspiration", noun: "evapotranspiration", def: "Water that returns to the air from soil and plants, added up over the months you choose.", icon: "layers", down: "lower", up: "higher" },
   { id: "temperature", group: "Heat", name: "Air temperature", noun: "air temperature", def: "How warm the air is 2 metres above the ground, averaged over the months you choose.", icon: "thermo", down: "cooler", up: "warmer" },
 ];
 
@@ -122,44 +116,38 @@ export const MONTHS_LONG = ["January", "February", "March", "April", "May", "Jun
 export const DATASET_ROLE: Record<string, string> = {
   imerg: "Satellite record",
   merra2: "Long model record",
+  fldas: "Land model record",
 };
 
 /** The six places, with a one-line reason to look at each. */
 export const REGIONS: RegionDef[] = [
-  { id: 'cyprus_whole', name: 'Whole island', hint: 'The big picture: all of Cyprus averaged together. A good place to start.' },
-  { id: 'troodos', name: 'Troodos', hint: 'The mountains catch the most rain and feed the island’s dams.' },
-  { id: 'nicosia', name: 'Nicosia / Lefkoşa', hint: 'The inland plain between two mountain ranges, with the island’s hottest summers.' },
-  { id: 'limassol', name: 'Limassol', hint: 'The south coast below the Troodos mountains, home to Cyprus’s second-largest city.' },
-  { id: 'larnaca', name: 'Larnaca', hint: 'The drier east coast, around the salt lake and the island’s main airport.' },
-  { id: 'paphos', name: 'Paphos', hint: 'The west coast, the first land that winter storms reach from the sea.' }
+  { id: "cyprus_whole", name: "Whole island", hint: "The big picture: all of Cyprus averaged together. A good place to start." },
+  { id: "troodos", name: "Troodos", hint: "The mountains in the middle of the island, where the rivers that fill the dams begin." },
+  { id: "nicosia", name: "Nicosia / Lefkoşa", hint: "The capital, on the inland plain between the two mountain ranges." },
+  { id: "limassol", name: "Limassol", hint: "The south coast below the Troodos mountains, around the island’s main port." },
+  { id: "larnaca", name: "Larnaca", hint: "The south-east coast, around the salt lake and the international airport." },
+  { id: "paphos", name: "Paphos", hint: "The west coast, facing the open sea." },
 ];
 
-/** "Watch a case": the two guided demos. */
-export const CASES: Record<CaseId, CaseDef> = {
-  A: { label: 'Case 1 · Is Cyprus getting drier?', region: 'cyprus_whole', variable: 'annual_total', dataset: 'imerg', steps: [
-    { target: 'chart', card: 'series', text: 'Each dot is one year of rainfall from NASA’s GPM satellites. The totals swing wildly: about 275 mm in 2008, almost 790 mm in 2012.' },
-    { target: 'numbers', card: 'series', text: 'The trend is slightly down, about −7 mm per decade. But the p-value is 0.77, far above 0.05: not significant.' },
-    { target: 'deck', card: 'years', text: 'Does a longer record change the answer? A steady trend gets closer to significant as years are added. This one doesn’t.' },
-    { target: 'deck', card: 'second', text: 'A second NASA record going back to 1980 agrees: no significant trend. That doesn’t mean nothing is changing, only that it isn’t proven.' } ] },
-  B: { label: 'Case 2 · Is Cyprus getting hotter?', region: 'cyprus_whole', variable: 'annual_mean_temperature', dataset: 'merra2', steps: [
-    { target: 'case', card: 'series', text: 'Now temperature. The settings are filled in for us: average temperature, whole island, NASA’s MERRA-2 record from 1980.' },
-    { target: 'chart', card: 'series', text: 'Each dot is one year’s average temperature. Years bounce around, but the orange trend line climbs steadily.' },
-    { target: 'numbers', card: 'series', text: 'About +0.34 °C per decade, roughly 1.5 °C since 1980. The p-value is below 0.001: a significant trend.' },
-    { target: 'headline', card: 'series', text: 'Verdict: rainfall is not significantly changing, but Cyprus is significantly warmer.' } ] }
-};
 
 export const GLOSSARY: GlossaryEntry[] = [
   {
     id: "rainfall",
     term: "Rainfall (mm)",
     text: "How deep the rain would be if it all stayed where it fell. 10 mm of rain on one square metre is 10 litres of water.",
-    more: "We show totals: all the rain in a year or a season, averaged over an area. Satellites estimate rain from above and do not collect it in a gauge, so the amounts are too low over mountains. How rainfall changes over time is more reliable than the exact amount.",
+    more: "We show totals: all the rain in a year or a season, averaged over an area. Satellites estimate rain from above and do not collect it in a gauge, so the amounts tend to be too low over mountains. How rainfall changes over time is more reliable than the exact amount.",
   },
   {
     id: "temperature",
     term: "Air temperature (°C)",
     text: "How warm the air is 2 metres above the ground, averaged over the island.",
     more: "It comes from NASA’s MERRA-2 model, whose grid is too coarse to separate the five areas, so we show the whole island only. A yearly value is the average of the twelve months. A summer value is the average of June, July and August.",
+  },
+  {
+    id: "evapotranspiration",
+    term: "Evapotranspiration (mm)",
+    text: "Water that goes back into the air: evaporation from soil and water, plus the water plants release through their leaves.",
+    more: "It is measured in millimetres, like rainfall, so the two can be compared: rain is water arriving, evapotranspiration is water leaving. In a dry climate it is limited by how much water the soil holds, so it tends to rise after wet winters and fall in dry years. Our values come from NASA’s FLDAS land model, which calculates them from rainfall, temperature, sunshine and soil.",
   },
   {
     id: "area_average",
@@ -231,13 +219,13 @@ export const GLOSSARY: GlossaryEntry[] = [
     id: "variability",
     term: "Year-to-year variability",
     text: "How much a value usually swings from one year to the next. Big swings can hide a slow trend.",
-    more: "Yearly rainfall in Cyprus swings by roughly a quarter to 40% of the average. Yearly temperature swings by only a few tenths of a degree. This is why warming shows up clearly, while a rainfall change of a few percent per decade is hard to prove.",
+    more: "Yearly rainfall in Cyprus swings by about {rain_swing} of its average. Yearly temperature swings by about {temp_swing}. This is why warming shows up clearly, while a rainfall change of a few percent per decade is hard to prove.",
   },
   {
     id: "wet_season",
     term: "Wet and dry seasons",
     text: "In Cyprus most rain falls from October to March (wet season). April to September is the dry season.",
-    more: "A wet season runs across the New Year, so it is labelled with both years: 1998/99 is October 1998 to March 1999. We only count complete seasons. Wet-season rain refills reservoirs and groundwater. Dry-season rain is small, but it matters for crops and fire risk.",
+    more: "A wet season runs across the New Year, so it is labelled with both years: a season labelled 1998/99 runs from October 1998 to March 1999. We only count complete seasons. Wet-season rain refills reservoirs and groundwater. Dry-season rain is small, but it matters for crops and fire risk.",
   },
   {
     id: "seasonal_cycle",
@@ -248,10 +236,17 @@ export const GLOSSARY: GlossaryEntry[] = [
   {
     id: "records",
     term: "Satellite record vs model record",
-    text: "GPM IMERG measures rain from satellites since 1998, in detail. MERRA-2 is a NASA model that combines many observations back to 1980, in less detail.",
-    more: "IMERG has a grid of about 10 km, fine enough to separate the five areas. MERRA-2 has a grid of about 50 km, so we use it for the whole island only. A model record is consistent over a long time, but it is not a direct measurement. When both records give the same answer, as on the “Second opinion” card, we can trust it more.",
+    text: "GPM IMERG measures rain from satellites since {imerg_start}, in detail. MERRA-2 and FLDAS are NASA models that combine many observations, back to {merra2_start} and {fldas_start}.",
+    more: "IMERG and FLDAS have a grid of about 10 km, fine enough to separate the five areas. MERRA-2 has a grid of about 50 km, so we use it for the whole island only. A model record is consistent over a long time, but it is not a direct measurement. When two records give the same answer, as on the “Second opinion” card, we can trust it more.",
   },
 ];
+
+/** "Next lead" on the case file: which variable to look at next, and why. */
+export const NEXT_LEADS: Record<string, { text: string; button: string }> = {
+  rainfall: { text: "Is rainfall changing too?", button: "Check rainfall" },
+  evapotranspiration: { text: "Rain is only half of the water story. How much water goes back into the air?", button: "Check evapotranspiration" },
+  temperature: { text: "Heat drives how fast the land dries. Is it getting hotter?", button: "Check temperature" },
+};
 
 export const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
   { icon: "search", title: "Ask", text: "Choose a question, like “Is it getting hotter?”" },
@@ -259,16 +254,20 @@ export const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
   { icon: "check", title: "Decide", text: "Find out whether the change is real." },
 ];
 
-export const DATASETS = [
-  { name: "GPM IMERG V07", what: "Rainfall from satellites (Final Run, monthly)", period: "Jan 1998 – Sep 2025", detail: "About 10 km grid. Used for the five areas and the whole island." },
-  { name: "GPM IMERG V07 daily", what: "Daily rainfall from satellites (Final Run)", period: "Daily grid", detail: "About 10 km grid. Used for the rain map." },
-  { name: "MERRA-2", what: "Rainfall (bias-corrected) from NASA’s reanalysis model", period: "Jan 1980 – Sep 2026", detail: "About 50 km grid. Whole island only; used as a long record and a second opinion." },
-  { name: "MERRA-2", what: "Air temperature 2 m above the ground", period: "Jan 1980 – Sep 2026", detail: "About 50 km grid. Whole island only." },
-  { name: "NISAR DEM v1.2", what: "Terrain height for the maps", period: "Copernicus GLO-30, 2011–2015", detail: "About 30 m. Modified Copernicus DEM, adapted by NASA/JPL for NISAR." },
+/**
+ * The datasets behind the app. Rows with `variable` and `dataset` get their
+ * period from the data itself.
+ */
+export const DATASETS: { name: string; what: string; detail: string; variable?: string; dataset?: string; period?: string }[] = [
+  { name: "GPM IMERG V07", variable: "rainfall", dataset: "imerg", what: "Rainfall from satellites (Final Run, monthly)", detail: "About 10 km grid. Used for the five areas and the whole island. Its long-term average is the rainfall layer on the 3D map." },
+  { name: "MERRA-2", variable: "rainfall", dataset: "merra2", what: "Rainfall (bias-corrected) from NASA’s reanalysis model", detail: "About 50 km grid. Whole island only. Used as a long record and a second opinion." },
+  { name: "FLDAS Noah", variable: "evapotranspiration", dataset: "fldas", what: "Evapotranspiration from NASA’s land surface model", detail: "About 10 km grid. Used for the five areas and the whole island." },
+  { name: "MERRA-2", variable: "temperature", dataset: "merra2", what: "Air temperature 2 m above the ground", detail: "About 50 km grid. Whole island only." },
+  { name: "NISAR DEM v1.2", what: "Terrain height for the 3D map", period: "Copernicus GLO-30, 2011–2015", detail: "About 30 m. Modified Copernicus DEM, adapted by NASA/JPL for NISAR." },
 ];
 
 export const METHOD_STEPS = [
-  { title: "1 · Add up whole years and seasons", text: "Monthly values become yearly totals, wet-season totals (Oct–Mar) and dry-season totals (Apr–Sep), or yearly averages for temperature. This removes the regular seasonal cycle." },
+  { title: "1 · Add up whole years and seasons", text: "Monthly values become one value per year or per season. Rainfall and evapotranspiration are added up. Temperature is averaged. This removes the regular seasonal cycle." },
   { title: "2 · Measure the rate of change", text: "Sen’s slope: the middle value of the slopes between every pair of years, so one extreme year cannot distort it. The line on the chart uses the same slope. We also give its likely range (95% confidence)." },
   { title: "3 · Test whether it’s real", text: "The Mann-Kendall test asks whether values go up or down more often than chance allows. Below p = 0.05 we call the trend significant." },
   { title: "4 · Apply the standard", text: "p below 0.05 is a significant trend. p of 0.05 or more does not meet the standard, which doesn’t mean there is no trend: a longer record may be needed." },
@@ -276,12 +275,14 @@ export const METHOD_STEPS = [
   { title: "6 · Be careful with many tests", text: "Every combination of place, months and years is a new test. About 1 in 20 passes by chance, so a result just below 0.05 is weak evidence on its own." },
 ];
 
+/** Words in {braces} are filled in from the data when shown. */
 export const LIMITS = [
-  "Rainfall in Cyprus swings by about ±25–40% from year to year, so small trends are hard to detect.",
-  "Satellite rainfall is too low over the Troodos mountains, so we focus on change, not exact amounts.",
-  "Areas are boxes averaged together; coastal boxes include some sea.",
-  "MERRA-2 is coarse (about 50 km), so temperature is for the whole island only.",
-  "Satellite data before mid-2000 comes from the older TRMM era.",
+  "Yearly rainfall in Cyprus swings by about {rain_swing} of its average from one year to the next, so small trends are hard to detect.",
+  "Satellites tend to underestimate rain over mountains such as the Troodos, so we focus on change, not exact amounts.",
+  "Each area is a rectangle averaged as a whole. The coastal rectangles include some sea.",
+  "MERRA-2 has a grid of about 50 km, so temperature is shown for the whole island only.",
+  "Evapotranspiration comes from a land model (FLDAS), not from a direct measurement.",
+  "The satellite rainfall record starts in {imerg_start}. Its years before 2014 come from the earlier TRMM mission and its partner satellites.",
 ];
 
 export const STUDY_AREA = "Study area: 34.41917° N, 32.15293° E (south-west) to 35.7758° N, 34.73326° E (north-east).";
@@ -294,9 +295,11 @@ export const REFERENCES = [
   "Global Modeling and Assimilation Office (GMAO). (2015). MERRA-2 tavgM_2d_slv_Nx: 2d, Monthly mean, Time-Averaged, Single-Level, Assimilation, Single-Level Diagnostics V5.12.4 (M2TMNXSLV) [Data set]. NASA Goddard Earth Sciences Data and Information Services Center (GES DISC). Accessed November 14, 2026. https://doi.org/10.5067/AP1B0BA5PD2K",
   "Gelaro, R., et al. (2017). The Modern-Era Retrospective Analysis for Research and Applications, Version 2 (MERRA-2). Journal of Climate, 30(14), 5419–5454. https://doi.org/10.1175/JCLI-D-16-0758.1",
   "NASA/JPL/NISAR. (2026). Modified Copernicus Digital Elevation Models used by the NASA-ISRO Synthetic Aperture Radar (NISAR) Mission (Version 1.2) [Data set]. NASA Alaska Satellite Facility Distributed Active Archive Center (ASF DAAC). Accessed November 14, 2026. https://doi.org/10.5067/NIDEM-1 (Derived from European Space Agency Copernicus DEM, https://doi.org/10.5270/esa-c5d3d65.)",
-  "Acker, J. G., & Leptoukh, G. (2007). Online analysis enhances use of NASA Earth science data. Eos, Transactions American Geophysical Union, 88(2), 14–17. https://doi.org/10.1029/2007EO020003 — Time series, spatial subsetting and time-averaged maps (1998-01-01 to 2025-10-01) were produced with the NASA Giovanni online data system, developed and maintained by NASA GES DISC.",
-  "Mann, H. B. (1945). Nonparametric tests against trend. Econometrica, 13(3), 245–259. https://doi.org/10.2307/1907187 — Kendall, M. G. (1975). Rank Correlation Methods. London: Charles Griffin.",
+  "Acker, J. G., & Leptoukh, G. (2007). Online analysis enhances use of NASA Earth science data. Eos, Transactions American Geophysical Union, 88(2), 14–17. https://doi.org/10.1029/2007EO020003 Time series, spatial subsetting and time-averaged maps (1998-01-01 to 2025-10-01) were produced with the NASA Giovanni online data system, developed and maintained by NASA GES DISC.",
+  "Mann, H. B. (1945). Nonparametric tests against trend. Econometrica, 13(3), 245–259. https://doi.org/10.2307/1907187 See also Kendall, M. G. (1975). Rank Correlation Methods. London: Charles Griffin.",
   "Sen, P. K. (1968). Estimates of the regression coefficient based on Kendall's tau. Journal of the American Statistical Association, 63(324), 1379–1389. https://doi.org/10.1080/01621459.1968.10480934",
+  "McNally, A., & NASA/GSFC/HSL. (2018). FLDAS Noah Land Surface Model L4 Global Monthly 0.1 x 0.1 degree (MERRA-2 and CHIRPS) (FLDAS_NOAH01_C_GL_M) [Data set]. NASA Goddard Earth Sciences Data and Information Services Center (GES DISC). Accessed November 14, 2026. https://doi.org/10.5067/5NHC22T9375G",
+  "Yue, S., & Wang, C. Y. (2004). The Mann-Kendall test modified by effective sample size to detect trend in serially correlated hydrological series. Water Resources Management, 18(3), 201–218. https://doi.org/10.1023/B:WARM.0000043140.61082.60",
 ];
 
 export const DEM_LICENSE =

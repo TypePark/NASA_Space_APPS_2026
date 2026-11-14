@@ -1,25 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Icon from "../components/Icon";
 import RegionMap from "../components/RegionMap";
 import { MoreYearsChart, RhythmChart, SeriesChart } from "../components/charts";
 import { BASE_VARS, MONTHS_LONG, MONTHS_SHORT, MONTH_SETS, VARS } from "../content";
-import type { DemoTarget } from "../content";
+import type { TourTarget } from "../content";
 import type { VariableId } from "../data/records";
 import { SERIES, yearsOf } from "../data/series";
 import { MIN_YEARS, monthsText } from "../model";
 import type { Settings, View } from "../model";
 
-export interface DemoBar {
-  label: string;
-  step: number;
-  count: number;
-  text: string;
-  target: DemoTarget;
-  nextLabel: string;
-  onBack: () => void;
-  onNext: () => void;
-  onExit: () => void;
-}
 
 interface ExplorerProps {
   view: View;
@@ -29,7 +18,10 @@ interface ExplorerProps {
   onPanel: (open: boolean) => void;
   onChange: (patch: Partial<Settings>) => void;
   onTerm: (id: string) => void;
-  demo: DemoBar | null;
+  /** Part of the page the guided tour is pointing at. */
+  highlight: TourTarget | null;
+  /** Current tour step, so the page can scroll to the highlighted part. */
+  tourStep: number | null;
 }
 
 function Pill({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -64,7 +56,7 @@ function coverage(variable: string): string {
   return [...seen].map(([name, [a, b]]) => `NASA ${name} ${a}–${b}`).join(" · ");
 }
 
-export default function Explorer({ view, card, onCard, panelOpen, onPanel, onChange, onTerm, demo }: ExplorerProps) {
+export default function Explorer({ view, card, onCard, panelOpen, onPanel, onChange, onTerm, highlight, tourStep }: ExplorerProps) {
   const { rec, cards } = view;
   const cardIdx = Math.max(0, Math.min(cards.length - 1, card));
   const cur = cards[cardIdx].id;
@@ -72,11 +64,19 @@ export default function Explorer({ view, card, onCard, panelOpen, onPanel, onCha
   const [detailed, setDetailed] = useState(view.custom);
   const months = view.vdef.months;
   const toggleMonth = (m: number) => {
-    const next = months.includes(m) ? months.filter((x) => x !== m) : [...months, m].sort((a, b) => a - b);
+    // From a whole year, tapping a month means "only this month". Otherwise it adds or removes the month.
+    const next = months.length === 12 ? [m] : months.includes(m) ? months.filter((x) => x !== m) : [...months, m].sort((a, b) => a - b);
     if (next.length) onChange({ custom: { variable: view.base.id, months: next } });
   };
-  const hl = (t: DemoTarget) => (demo?.target === t ? " is-hl" : "");
-  const deckHl = demo && (demo.target === "chart" || demo.target === "deck") ? " is-hl" : "";
+  const hl = (t: TourTarget) => (highlight === t ? " is-hl" : "");
+  const deckHl = hl("deck");
+
+  // During the tour, bring the highlighted part into view.
+  const page = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (tourStep === null) return;
+    page.current?.querySelector(".is-hl")?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [tourStep, highlight]);
 
   useEffect(() => {
     if (!panelOpen) return;
@@ -113,11 +113,11 @@ export default function Explorer({ view, card, onCard, panelOpen, onPanel, onCha
   ];
 
   return (
-    <main className="page page-wide explorer">
+    <main ref={page} className="page page-wide explorer">
       {/* floating settings */}
       <div className="adjust">
         <div className="adjust-anchor">
-          <button type="button" className="btn btn-primary adjust-btn" aria-expanded={panelOpen} onClick={() => onPanel(!panelOpen)}>
+          <button type="button" className={"btn btn-primary adjust-btn" + hl("adjust")} aria-expanded={panelOpen} onClick={() => onPanel(!panelOpen)}>
             <Icon name="sliders" strokeWidth={1.9} />
             Adjust
           </button>
@@ -293,7 +293,7 @@ export default function Explorer({ view, card, onCard, panelOpen, onPanel, onCha
           {view.headline}
         </h1>
 
-        <div className="row row-tight">
+        <div className={"row row-tight badges" + hl("badges")}>
           <button type="button" className="badge badge-btn" onClick={() => onTerm("trend")}>
             <Icon name={view.direction.icon} size={18} strokeWidth={1.9} />
             <span className="dotted">{view.direction.label}</span>
@@ -447,6 +447,43 @@ export default function Explorer({ view, card, onCard, panelOpen, onPanel, onCha
                 </div>
               )}
 
+              {cur === "compare" && (
+                <div className="stack-12">
+                  <p className="lead">{view.compare.note}</p>
+                  {view.compare.rows.map((row) => (
+                    <button
+                      key={row.id}
+                      type="button"
+                      className="second-row compare-row"
+                      aria-pressed={row.current}
+                      onClick={() => onChange({ custom: { variable: row.id, months } })}
+                    >
+                      <span className="row row-center row-tight compare-name">
+                        <span className="round-icon round-icon-sm">
+                          <Icon name={row.icon} />
+                        </span>
+                        <span className="stack-0">
+                          <span className="strong">{row.name}</span>
+                          <span className="tiny muted">{row.sub}</span>
+                        </span>
+                      </span>
+                      <span className="row row-center row-tight">
+                        <Icon name={row.direction} size={18} strokeWidth={1.9} />
+                        <span className="num small">{row.value}</span>
+                        <span className={`badge badge-sm badge-${row.badge.status}`}>
+                          <Icon name={row.badge.icon} size={14} strokeWidth={2} />
+                          {row.badge.label}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                  <p className="small muted">
+                    {view.region.name}, {months.length === 12 ? "whole year" : monthsText(months)}. Each variable uses its own NASA record, so the years differ.
+                    Choose a row to look at that variable.
+                  </p>
+                </div>
+              )}
+
               {cur === "years" && (
                 <div className="card-split">
                   <div className="card-text">
@@ -508,7 +545,7 @@ export default function Explorer({ view, card, onCard, panelOpen, onPanel, onCha
         </section>
 
         {view.where && (
-          <section aria-labelledby="where-title" className="panel where">
+          <section aria-labelledby="where-title" className={"panel where" + hl("where")}>
             <div className="stack-2">
               <h2 id="where-title" className="h3">
                 Where is it changing?
@@ -548,42 +585,20 @@ export default function Explorer({ view, card, onCard, panelOpen, onPanel, onCha
               })}
             </div>
             <span className="tiny muted">{view.where.caption}</span>
+            <a className="link-btn where-3d" href="#/map3d">
+              <Icon name="layers" size={18} />
+              See Cyprus in 3D
+            </a>
           </section>
         )}
       </div>
 
       <div className="row">
-        <a className="btn btn-primary btn-lg" href="#/case">
+        <a className={"btn btn-primary btn-lg" + hl("verdict")} href="#/case">
           Close the case: see the verdict
           <Icon name="arrowR" strokeWidth={2} />
         </a>
       </div>
-
-      {/* demo caption: follows along at the bottom */}
-      {demo && (
-        <div role="status" className="demo-bar">
-          <div className="demo-text">
-            <Icon name="play" size={24} />
-            <div className="stack-4">
-              <span className="demo-label">
-                {demo.label} · Step {demo.step} of {demo.count}
-              </span>
-              <span>{demo.text}</span>
-            </div>
-          </div>
-          <div className="row row-tight">
-            <button type="button" className="btn demo-back" disabled={demo.step <= 1} onClick={demo.onBack}>
-              Back
-            </button>
-            <button type="button" className="btn demo-next" onClick={demo.onNext}>
-              {demo.nextLabel}
-            </button>
-            <button type="button" className="icon-btn demo-exit" aria-label="Exit the demo" onClick={demo.onExit}>
-              <Icon name="x" strokeWidth={2} />
-            </button>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

@@ -6,11 +6,12 @@ import type { DatasetId, RegionId } from "./series";
 
 export type { DatasetId, RegionId };
 
-/** The five ready-made questions. */
+/** The ready-made questions. */
 export type VariableId =
   | "annual_total"
   | "wet_season_total"
   | "dry_season_total"
+  | "annual_evapotranspiration"
   | "annual_mean_temperature"
   | "summer_mean_temperature";
 

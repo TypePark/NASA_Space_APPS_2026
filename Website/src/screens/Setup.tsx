@@ -1,8 +1,8 @@
 import Icon from "../components/Icon";
 import RegionMap from "../components/RegionMap";
 import { REGIONS, VARS } from "../content";
-import type { DatasetId, RegionId, VariableId } from "../data/records";
-import { datasetsFor, regionsFor } from "../data/series";
+import type { RegionId, VariableId } from "../data/records";
+import { datasetsFor, findSeries, regionsFor, yearsOf } from "../data/series";
 import { regionDef, resolve, variableDef } from "../model";
 import type { Settings } from "../model";
 
@@ -14,16 +14,25 @@ interface SetupProps {
   onOpen: () => void;
 }
 
-const RECORDS: { id: DatasetId; label: string; sub: string; icon: "calendar" | "layers" }[] = [
-  { id: "imerg", label: "Recent and detailed", sub: "Since 1998 · NASA GPM satellites", icon: "calendar" },
-  { id: "merra2", label: "Longer history", sub: "Since 1980 · NASA MERRA-2 model", icon: "layers" },
-];
+/** How each record is described on the "How far back?" step. Its first year is read from the data. */
+const RECORD_STYLE: Record<string, { label: string; kind: string; icon: "calendar" | "layers" }> = {
+  imerg: { label: "Recent and detailed", kind: "satellites", icon: "calendar" },
+  merra2: { label: "Longer history", kind: "model", icon: "layers" },
+  fldas: { label: "Land model", kind: "model", icon: "layers" },
+};
 
 export default function Setup({ settings, step, onStep, onChange, onOpen }: SetupProps) {
   const chosen = regionDef(settings.region);
   const whole = settings.region === "cyprus_whole";
   // The record step only appears when the question has more than one record for the place.
-  const total = datasetsFor(variableDef(settings.variable).base, resolve(settings).region).length > 1 ? 3 : 2;
+  const base = variableDef(settings.variable).base;
+  const place = resolve(settings).region;
+  const records = datasetsFor(base, place).map((id) => {
+    const series = findSeries(base, place, id)!;
+    const style = RECORD_STYLE[id] ?? { label: series.dataset_name, kind: "record", icon: "layers" as const };
+    return { id, label: style.label, sub: `Since ${yearsOf(series)[0]} · NASA ${series.dataset_name} ${style.kind}`, icon: style.icon };
+  });
+  const total = records.length > 1 ? 3 : 2;
   const cur = Math.max(1, Math.min(total, step));
 
   const fills: Record<string, string> = {};
@@ -118,10 +127,10 @@ export default function Setup({ settings, step, onStep, onChange, onOpen }: Setu
         <div className="stack-24 narrow">
           <div className="stack-6">
             <h1 className="title">How far back should we look?</h1>
-            <p className="lead muted">Two NASA records cover the whole island.</p>
+            <p className="lead muted">More than one NASA record covers this place.</p>
           </div>
           <div role="radiogroup" aria-label="Record" className="row">
-            {RECORDS.map((c) => (
+            {records.map((c) => (
               <button
                 key={c.id}
                 type="button"

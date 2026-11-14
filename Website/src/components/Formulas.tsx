@@ -46,7 +46,7 @@ const STEPS: Step[] = [
     where: (
       <>
         <i>P</i> is rainfall in mm for the month and <i>d</i> is the number of days in it. GPM IMERG gives a rate <i>r</i> in mm per hour.
-        MERRA-2 gives a flux <i>f</i> in kg m<sup>−2</sup> s<sup>−1</sup>, and 1 kg of water on 1 m<sup>2</sup> is 1 mm deep. Temperature
+        MERRA-2 rainfall and FLDAS evapotranspiration are fluxes <i>f</i> in kg m<sup>−2</sup> s<sup>−1</sup>, and 1 kg of water on 1 m<sup>2</sup> is 1 mm deep. Temperature
         arrives in kelvin.
       </>
     ),
@@ -68,7 +68,7 @@ const STEPS: Step[] = [
     where: (
       <>
         <i>M</i> is the set of months chosen and <i>x</i>
-        <sub>y,m</sub> is the value for month <i>m</i> of year <i>y</i>. Rainfall is added up (first line); temperature is averaged
+        <sub>y,m</sub> is the value for month <i>m</i> of year <i>y</i>. Rainfall and evapotranspiration are added up (first line); temperature is averaged
         (second line). A year or season with any month missing is left out. A season that crosses the New Year, such as October to March,
         belongs to the year it starts in. This step removes the seasonal cycle.
       </>

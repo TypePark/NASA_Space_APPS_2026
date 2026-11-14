@@ -20,11 +20,11 @@ Other commands: `npm run build`, `npm run lint`, `npm test`.
 | Welcome | `#/` | Headline and the two ways in |
 | Set-up | `#/setup` | Step by step: where, what, how far back |
 | Explorer | `#/explore` | The tool: verdict, key numbers, card deck, map |
-| Rain map | `#/rain-map` | Map slot for the rain simulation, with a panel for the selected area |
+| 3D Map | `#/map3d` | 3D terrain of Cyprus with the average rainfall map and a rain simulation |
 | Case file | `#/case` | What is changing, where, how much, is it significant |
 | Data & Method | `#/method` | Datasets, method, all 23 results, limits |
 
-The glossary drawer and the "Watch a case" demo open on top of these screens.
+The glossary drawer and the guided tour open on top of these screens.
 
 ## Where things are
 
@@ -38,7 +38,8 @@ The glossary drawer and the "Watch a case" demo open on top of these screens.
 | `src/lib/trendStats.ts` | Mann-Kendall test, Sen's slope with its 95% range, and the check for year-to-year dependence |
 | `src/lib/trendStats.test.ts` | Checks that the browser reproduces all 23 Python results, and tests the choice of months |
 | `src/model.ts` | Turns the chosen settings into the headline, numbers and card contents |
-| `src/content.ts` | Wording: questions, places, glossary, demo steps, icons |
+| `src/content.ts` | Wording: questions, places, glossary, references, icons |
+| `src/tour.ts` | The guided tour: its steps, "your turn" tasks and what it says |
 | `src/components/RegionMap.tsx` | The map. A drawn placeholder with a fixed interface (see below) |
 | `src/components/charts.tsx` | The three SVG charts |
 | `src/screens/` | One file per screen |
@@ -46,7 +47,15 @@ The glossary drawer and the "Watch a case" demo open on top of these screens.
 
 ## Choosing what to analyse
 
-The Adjust card in the Explorer has two views. The simple view offers five ready-made questions. "More options" opens the detailed view: pick a variable, any months of the year, a place, a record and a range of years. Every choice is analysed in the browser.
+The Adjust card in the Explorer has two views. The simple view offers the ready-made questions. "More options" opens the detailed view: pick a variable, any months of the year, a place, a record and a range of years. Every choice is analysed in the browser.
+
+## Guided tour
+
+"Guided tour" in the menu walks a visitor through the Explorer, the case file and Data & Method in 16 steps. Some steps ask the visitor to do something (open a card, pick a place, choose months) and explain the result once it is done. Every number the tour quotes is read from the current result.
+
+## Facts in the wording
+
+Record lengths, first years and year-to-year swings quoted on the welcome page, in the glossary and in the limitations are calculated from `monthly.json` (see `facts()` and `coverage()` in `src/model.ts`). Nothing of that kind is typed in by hand.
 
 ## Adding a variable
 
@@ -69,9 +78,9 @@ It then appears in the detailed view, with the places and years it has data for.
 
 Region ids: `troodos`, `nicosia`, `limassol`, `larnaca`, `paphos`.
 
-## Replacing the rain map
+## The 3D map
 
-`src/components/RainMapSlot.tsx` is the slot for the CesiumJS rain simulation on the Rain map page. Replace its inside and keep its two props: `selectedRegion` and `onPick(regionId)`.
+`src/screens/Map3D.tsx` shows `src/components/TerrainMap3D.tsx`, which loads the map code in `Map3D/` (see `Map3D/README.md`). It needs an internet connection: CesiumJS and the satellite imagery are fetched when the page opens.
 
 ## Method
 
