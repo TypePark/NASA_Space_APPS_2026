@@ -1,7 +1,7 @@
 import Brand from "../components/Brand";
 import Icon from "../components/Icon";
 import RegionMap from "../components/RegionMap";
-import { BASE_VARS, HOW_STEPS, REGIONS } from "../content";
+import { BASE_VARS, HOW_STEPS } from "../content";
 import type { RegionId } from "../data/records";
 import { SERIES } from "../data/series";
 import { longestRecordYears } from "../model";
@@ -23,7 +23,7 @@ const listOf = (items: string[]) =>
     ? items.join("")
     : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 
-export default function Welcome({ onTour, onPlace, onVariable }: WelcomeProps) {
+export default function Welcome({ onTour }: WelcomeProps) {
   return (
     <section className="welcome">
       <div className="welcome-map" aria-hidden="true">
