@@ -1,5 +1,6 @@
+import logo from "../assets/logo.svg";
 import Icon from "../components/Icon";
-import { DATASETS, DEM_LICENSE, LIMITS, METHOD_STEPS, REFERENCES, STUDY_AREA } from "../content";
+import { DATASETS, DEM_LICENSE, LIMITS, METHOD_STEPS, REFERENCES, STUDY_AREA, TEAM } from "../content";
 import { allResultRows } from "../model";
 
 const ROWS = allResultRows();
@@ -144,12 +145,18 @@ export default function Method() {
       </section>
 
       <section aria-labelledby="m-team" className="team stack-8">
+        <img className="team-logo" src={logo} alt="AquaCosmos team logo" width="72" height="72" />
         <h2 id="m-team" className="h3">
           Team
         </h2>
         <p className="small muted">
-          AquaCosmos team · NASA Space Apps Challenge 2026 · Challenge: Be An Earth System Trend Detective
+          Team AquaCosmos · NASA Space Apps Challenge 2026 · Challenge: Be An Earth System Trend Detective!
         </p>
+        <ul className="team-list">
+          {TEAM.map((name) => (
+            <li key={name}>{name}</li>
+          ))}
+        </ul>
         <p className="tiny muted">
           This project uses NASA open data. NASA does not endorse any non-U.S. Government entity and is not responsible
           for information on non-U.S. Government websites.

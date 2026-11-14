@@ -158,3 +158,5 @@ export const REFERENCES = [
 
 export const DEM_LICENSE =
   "Contains modified Copernicus Digital Elevation Model (GLO-30) data [2011–2015], produced using Copernicus data and information funded by the European Union — EU-DEM layers, adapted by NASA/JPL for NISAR.";
+
+export const TEAM = ["Batuhan Meriç", "Kemal Efe Demir", "Mehmet Enes Gedikoğlu", "Aishah Mabayoje"];

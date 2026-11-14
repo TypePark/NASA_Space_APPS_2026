@@ -1,6 +1,6 @@
 # AquaCosmos
 
-NASA Space Apps Challenge 2026 · Challenge: **Be An Earth System Trend Detective** · Team **AquaCosmos**
+NASA Space Apps Challenge 2026 · Challenge: **Be An Earth System Trend Detective!** · Team **AquaCosmos**
 
 A tool for students and the public to investigate whether rainfall and temperature in Cyprus are changing, using real NASA data.
 

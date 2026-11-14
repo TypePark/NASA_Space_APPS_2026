@@ -233,7 +233,8 @@ a { color: var(--accent-ink); }
   color: var(--ink);
   text-decoration: none;
 }
-.brand-mark { color: var(--accent); }
+.brand-logo { flex: none; display: block; width: 36px; height: 36px; border-radius: 10px; }
+.team-logo { display: block; width: 72px; height: 72px; border-radius: 18px; }
 .brand-name { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
 .topbar-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .nav-link {
@@ -559,3 +560,6 @@ a { color: var(--accent-ink); }
   .rainmap-main { min-height: 440px; }
   .rain-map-slot { padding: 10px; }
 }
+
+.team-list { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.team-list li { padding: 6px 14px; border-radius: 999px; background: var(--surface-2); font-size: 15px; font-weight: 600; }
