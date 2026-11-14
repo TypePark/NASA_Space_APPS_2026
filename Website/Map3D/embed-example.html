@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Embed Example</title>
+  <style>
+    body{margin:0;font:16px/1.6 Georgia,serif;background:#f4f1ea;color:#222}
+    header{background:#1f3a5f;color:#fff;padding:18px 24px;font:600 20px system-ui,sans-serif}
+    main{max-width:960px;margin:0 auto;padding:16px}
+    .card{background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:16px;margin:20px 0}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+    code{background:#eee;padding:1px 5px;border-radius:4px}
+  </style>
+  <!-- 1) the only thing a host site needs -->
+  <script src="tif-terrain.js"></script>
+</head>
+<body>
+  <header>Some host website</header>
+  <main>
+    <p>This page stands in for any third-party site. The 3D terrain below is a single
+      <code>&lt;tif-terrain&gt;</code> element; Cesium and geotiff.js are loaded on demand.</p>
+
+    <div class="card">
+      <h3>Declarative: custom element</h3>
+      <tif-terrain src="../output_hh.tif" rain="../GIOVANNI-g4.timeAvgMap.GPM_3IMERGM_07_precipitation.19980101-20260930.32E_34N_34E_35N.tif" bounds="32.15293,34.41917,34.73326,35.7758" style="height:460px;border-radius:8px;overflow:hidden"></tif-terrain>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Programmatic: TifTerrain.mount()</h3>
+        <div id="box" style="height:320px;border-radius:8px;overflow:hidden"></div>
+        <p><button id="up">Exaggeration +</button> <button id="home">Reset view</button>
+          <span id="h"></span></p>
+      </div>
+      <div class="card">
+        <h3>Text content</h3>
+        <p>Pan the maps, then click inside and use WASD to fly. Keyboard input is only captured
+          while a map has focus, so the host page keeps its own shortcuts.</p>
+      </div>
+    </div>
+  </main>
+  <script>
+    // 2) or mount it from JS and use the controller
+    TifTerrain.mount('#box', {
+      src: '../output_hh.tif', bounds: [32.15293, 34.41917, 34.73326, 35.7758], imagery: 'osm', collapsed: true, exaggeration: 1.5,
+    }).then((map) => {
+      let ex = 1.5;
+      document.getElementById('up').onclick = () => map.setExaggeration(ex *= 1.25);
+      document.getElementById('home').onclick = () => map.flyHome();
+      const h = map.sampleHeight(32.86, 34.93);
+      if (h !== undefined) document.getElementById('h').textContent = `Troodos: ${h.toFixed(0)} m`;
+    });
+  </script>
+</body>
+</html>

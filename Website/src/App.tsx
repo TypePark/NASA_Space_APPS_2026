@@ -11,12 +11,13 @@ import type { Settings } from "./model";
 import CaseFile from "./screens/CaseFile";
 import Explorer from "./screens/Explorer";
 import type { DemoBar } from "./screens/Explorer";
+import Map3D from "./screens/Map3D";
 import Method from "./screens/Method";
 import RainMap from "./screens/RainMap";
 import Setup from "./screens/Setup";
 import Welcome from "./screens/Welcome";
 
-type Screen = "welcome" | "setup" | "explore" | "rain" | "case" | "method";
+type Screen = "welcome" | "setup" | "explore" | "rain" | "case" | "method" | "map3d";
 
 const ROUTES: Record<string, Screen> = {
   "": "welcome",
@@ -26,6 +27,7 @@ const ROUTES: Record<string, Screen> = {
   "#/rain-map": "rain",
   "#/case": "case",
   "#/method": "method",
+  "#/map3d": "map3d",
 };
 const HASH: Record<Screen, string> = {
   welcome: "#/",
@@ -34,6 +36,7 @@ const HASH: Record<Screen, string> = {
   rain: "#/rain-map",
   case: "#/case",
   method: "#/method",
+  map3d: "#/map3d",
 };
 
 function subscribeHash(cb: () => void) {
@@ -127,7 +130,7 @@ export default function App() {
     };
   }
 
-  const nav: NavKey = activeDemo ? "demo" : screen === "explore" ? "explore" : screen === "rain" ? "rain" : screen === "method" ? "method" : null;
+  const nav: NavKey = activeDemo ? "demo" : screen === "explore" ? "explore" : screen === "rain" ? "rain" : screen === "method" ? "method" : screen === "map3d" ? "map3d" : null;
 
   return (
     <div className="app">
@@ -212,6 +215,8 @@ export default function App() {
       )}
 
       {screen === "method" && <Method />}
+
+      {screen === "map3d" && <Map3D />}
 
       {glossaryTerm && <Glossary term={glossaryTerm} onClose={closeGlossary} />}
     </div>
