@@ -42,9 +42,6 @@ export default function TopBar({
         <a className="nav-link" aria-current={cur("map3d")} href="#/map3d">
           3D Map
         </a>
-        <a className="nav-link" aria-current={cur("map3d")} href="#/map3d">
-          3D Map
-        </a>
         <a className="nav-link" aria-current={cur("method")} href="#/method">
           Data &amp; Method
         </a>
