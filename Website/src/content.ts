@@ -120,9 +120,10 @@ export const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
 
 export const DATASETS = [
   { name: "GPM IMERG V07", what: "Rainfall from satellites (Final Run, monthly)", period: "Jan 1998 – Sep 2025", detail: "About 10 km grid. Used for the five areas and the whole island." },
+  { name: "GPM IMERG V07 daily", what: "Daily rainfall from satellites (Final Run)", period: "Daily grid", detail: "About 10 km grid. Used for the rain map." },
   { name: "MERRA-2", what: "Rainfall (bias-corrected) from NASA’s reanalysis model", period: "Jan 1980 – Sep 2026", detail: "About 50 km grid. Whole island only; used as a long record and a second opinion." },
   { name: "MERRA-2", what: "Air temperature 2 m above the ground", period: "Jan 1980 – Sep 2026", detail: "About 50 km grid. Whole island only." },
-  { name: "SRTM", what: "Terrain height for the map", period: "February 2000", detail: "From NASA’s Shuttle Radar Topography Mission." },
+  { name: "NISAR DEM v1.2", what: "Terrain height for the maps", period: "Copernicus GLO-30, 2011–2015", detail: "About 30 m. Modified Copernicus DEM, adapted by NASA/JPL for NISAR." },
 ];
 
 export const METHOD_STEPS = [
@@ -139,3 +140,21 @@ export const LIMITS = [
   "MERRA-2 is coarse (about 50 km), so temperature is for the whole island only.",
   "Satellite data before mid-2000 comes from the older TRMM era.",
 ];
+
+export const STUDY_AREA = "Study area: 34.41917° N, 32.15293° E (south-west) to 35.7758° N, 34.73326° E (north-east).";
+
+/** References for Data & Method. DOIs are turned into links when shown. */
+export const REFERENCES = [
+  "Huffman, G. J., Stocker, E. F., Bolvin, D. T., Nelkin, E. J., & Tan, J. (2023). GPM IMERG Final Precipitation L3 1 month 0.1 degree x 0.1 degree V07 (GPM_3IMERGM) [Data set]. NASA Goddard Earth Sciences Data and Information Services Center (GES DISC). Accessed November 14, 2026. https://doi.org/10.5067/GPM/IMERG/3B-MONTH/07",
+  "Huffman, G. J., Stocker, E. F., Bolvin, D. T., Nelkin, E. J., Tan, J., & Savtchenko, A. (Ed.). (2023). GPM IMERG Final Precipitation L3 1 day 0.1 degree x 0.1 degree V07 (GPM_3IMERGDF) [Data set]. NASA Goddard Earth Sciences Data and Information Services Center (GES DISC). Accessed November 14, 2026. https://doi.org/10.5067/GPM/IMERGDF/DAY/07",
+  "Global Modeling and Assimilation Office (GMAO). (2015). MERRA-2 tavgM_2d_flx_Nx: 2d, Monthly mean, Time-Averaged, Single-Level, Assimilation, Surface Flux Diagnostics V5.12.4 (M2TMNXFLX) [Data set]. NASA Goddard Earth Sciences Data and Information Services Center (GES DISC). Accessed November 14, 2026. https://doi.org/10.5067/0JRLVL8YV2Y4",
+  "Global Modeling and Assimilation Office (GMAO). (2015). MERRA-2 tavgM_2d_slv_Nx: 2d, Monthly mean, Time-Averaged, Single-Level, Assimilation, Single-Level Diagnostics V5.12.4 (M2TMNXSLV) [Data set]. NASA Goddard Earth Sciences Data and Information Services Center (GES DISC). Accessed November 14, 2026. https://doi.org/10.5067/AP1B0BA5PD2K",
+  "Gelaro, R., et al. (2017). The Modern-Era Retrospective Analysis for Research and Applications, Version 2 (MERRA-2). Journal of Climate, 30(14), 5419–5454. https://doi.org/10.1175/JCLI-D-16-0758.1",
+  "NASA/JPL/NISAR. (2026). Modified Copernicus Digital Elevation Models used by the NASA-ISRO Synthetic Aperture Radar (NISAR) Mission (Version 1.2) [Data set]. NASA Alaska Satellite Facility Distributed Active Archive Center (ASF DAAC). Accessed November 14, 2026. https://doi.org/10.5067/NIDEM-1 (Derived from European Space Agency Copernicus DEM, https://doi.org/10.5270/esa-c5d3d65.)",
+  "Acker, J. G., & Leptoukh, G. (2007). Online analysis enhances use of NASA Earth science data. Eos, Transactions American Geophysical Union, 88(2), 14–17. https://doi.org/10.1029/2007EO020003 — Time series, spatial subsetting and time-averaged maps (1998-01-01 to 2025-10-01) were produced with the NASA Giovanni online data system, developed and maintained by NASA GES DISC.",
+  "Mann, H. B. (1945). Nonparametric tests against trend. Econometrica, 13(3), 245–259. https://doi.org/10.2307/1907187 — Kendall, M. G. (1975). Rank Correlation Methods. London: Charles Griffin.",
+  "Sen, P. K. (1968). Estimates of the regression coefficient based on Kendall's tau. Journal of the American Statistical Association, 63(324), 1379–1389. https://doi.org/10.1080/01621459.1968.10480934",
+];
+
+export const DEM_LICENSE =
+  "Contains modified Copernicus Digital Elevation Model (GLO-30) data [2011–2015], produced using Copernicus data and information funded by the European Union — EU-DEM layers, adapted by NASA/JPL for NISAR.";

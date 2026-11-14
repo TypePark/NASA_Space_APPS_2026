@@ -1,7 +1,7 @@
 import Brand from "./Brand";
 import Icon from "./Icon";
 
-export type NavKey = "explore" | "demo" | "method" | null;
+export type NavKey = "explore" | "rain" | "demo" | "method" | null;
 
 interface TopBarProps {
   active: NavKey;
@@ -21,6 +21,9 @@ export default function TopBar({ active, onExplore, onDemo, onGlossary }: TopBar
         <button type="button" className="nav-link" aria-current={cur("explore")} onClick={onExplore}>
           Explore
         </button>
+        <a className="nav-link" aria-current={cur("rain")} href="#/rain-map">
+          Rain map
+        </a>
         <button type="button" className="nav-link" aria-current={cur("demo")} onClick={onDemo}>
           Watch a case
         </button>

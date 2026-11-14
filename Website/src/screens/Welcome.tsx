@@ -24,6 +24,9 @@ export default function Welcome({ onDemo, onPlace }: WelcomeProps) {
           <a className="nav-link" href="#/explore">
             Explore
           </a>
+          <a className="nav-link" href="#/rain-map">
+            Rain map
+          </a>
           <a className="btn btn-outline btn-sm" href="#/method">
             Data &amp; Method
           </a>
@@ -77,7 +80,7 @@ export default function Welcome({ onDemo, onPlace }: WelcomeProps) {
         </div>
 
         <p className="tiny muted">
-          Data: NASA GPM IMERG V07 (rainfall), NASA MERRA-2 (rainfall and air temperature) and NASA SRTM (terrain).
+          Data: NASA GPM IMERG V07 (rainfall), NASA MERRA-2 (rainfall and air temperature) and the NISAR elevation model (terrain).
         </p>
       </div>
     </section>

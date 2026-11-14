@@ -20,6 +20,7 @@ Other commands: `npm run build`, `npm run lint`, `npm test`.
 | Welcome | `#/` | Headline and the two ways in |
 | Set-up | `#/setup` | Step by step: where, what, how far back |
 | Explorer | `#/explore` | The tool: verdict, key numbers, card deck, map |
+| Rain map | `#/rain-map` | Map slot for the rain simulation, with a panel for the selected area |
 | Case file | `#/case` | What is changing, where, how much, is it significant |
 | Data & Method | `#/method` | Datasets, method, all 23 results, limits |
 
@@ -53,10 +54,14 @@ The glossary drawer and the "Watch a case" demo open on top of these screens.
 
 Region ids: `troodos`, `nicosia`, `limassol`, `larnaca`, `paphos`.
 
+## Replacing the rain map
+
+`src/components/RainMapSlot.tsx` is the slot for the CesiumJS rain simulation on the Rain map page. Replace its inside and keep its two props: `selectedRegion` and `onPick(regionId)`.
+
 ## Method
 
 - Rate of change: **Sen's slope**, per decade.
 - Significance: **Mann-Kendall test**. p < 0.05 is "Significant", otherwise "Not significant".
 - Temperature and MERRA-2 rainfall exist for the whole island only.
 
-Data: NASA GPM IMERG V07, NASA MERRA-2 and NASA SRTM. NASA does not endorse any non-U.S. Government entity and is not responsible for information on non-U.S. Government websites.
+Data: NASA GPM IMERG V07, NASA MERRA-2 and the NISAR elevation model (modified Copernicus DEM). NASA does not endorse any non-U.S. Government entity and is not responsible for information on non-U.S. Government websites.

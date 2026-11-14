@@ -1,8 +1,26 @@
 import Icon from "../components/Icon";
-import { DATASETS, LIMITS, METHOD_STEPS } from "../content";
+import { DATASETS, DEM_LICENSE, LIMITS, METHOD_STEPS, REFERENCES, STUDY_AREA } from "../content";
 import { allResultRows } from "../model";
 
 const ROWS = allResultRows();
+
+/** Show a reference with every DOI as a link. */
+function Reference({ text }: { text: string }) {
+  const parts = text.split(/(https:\/\/doi\.org\/[^\s]*[^\s.,)])/);
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 ? (
+          <a key={i} href={part}>
+            {part}
+          </a>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
 
 export default function Method() {
   return (
@@ -42,6 +60,7 @@ export default function Method() {
           Accessed through NASA Giovanni (area-averaged time series). Regions are the Cyprus country outline plus five
           boxes around Troodos, Nicosia / Lefkoşa, Limassol, Larnaca and Paphos.
         </p>
+        <p className="small muted">{STUDY_AREA}</p>
       </section>
 
       <section aria-labelledby="m-method" className="stack-14">
@@ -108,6 +127,20 @@ export default function Method() {
             <li key={l}>{l}</li>
           ))}
         </ul>
+      </section>
+
+      <section aria-labelledby="m-refs" className="stack-14">
+        <h2 id="m-refs" className="h2">
+          References
+        </h2>
+        <ol className="references small muted">
+          {REFERENCES.map((r) => (
+            <li key={r}>
+              <Reference text={r} />
+            </li>
+          ))}
+        </ol>
+        <p className="note tiny muted">{DEM_LICENSE}</p>
       </section>
 
       <section aria-labelledby="m-team" className="team stack-8">

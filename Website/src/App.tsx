@@ -12,16 +12,18 @@ import CaseFile from "./screens/CaseFile";
 import Explorer from "./screens/Explorer";
 import type { DemoBar } from "./screens/Explorer";
 import Method from "./screens/Method";
+import RainMap from "./screens/RainMap";
 import Setup from "./screens/Setup";
 import Welcome from "./screens/Welcome";
 
-type Screen = "welcome" | "setup" | "explore" | "case" | "method";
+type Screen = "welcome" | "setup" | "explore" | "rain" | "case" | "method";
 
 const ROUTES: Record<string, Screen> = {
   "": "welcome",
   "#/": "welcome",
   "#/setup": "setup",
   "#/explore": "explore",
+  "#/rain-map": "rain",
   "#/case": "case",
   "#/method": "method",
 };
@@ -29,6 +31,7 @@ const HASH: Record<Screen, string> = {
   welcome: "#/",
   setup: "#/setup",
   explore: "#/explore",
+  rain: "#/rain-map",
   case: "#/case",
   method: "#/method",
 };
@@ -122,7 +125,7 @@ export default function App() {
     };
   }
 
-  const nav: NavKey = activeDemo ? "demo" : screen === "explore" ? "explore" : screen === "method" ? "method" : null;
+  const nav: NavKey = activeDemo ? "demo" : screen === "explore" ? "explore" : screen === "rain" ? "rain" : screen === "method" ? "method" : null;
 
   return (
     <div className="app">
@@ -179,6 +182,15 @@ export default function App() {
           onChange={change}
           onTerm={openGlossary}
           demo={demoBar}
+        />
+      )}
+
+      {screen === "rain" && (
+        <RainMap
+          onOpen={(region: RegionId) => {
+            change({ region, variable: "annual_total", dataset: "imerg" });
+            go("explore");
+          }}
         />
       )}
 
