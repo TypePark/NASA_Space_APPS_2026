@@ -1,32 +1,80 @@
 import { describe, expect, it } from "vitest";
-import { RECORDS } from "../data/records";
+import stored from "../data/all_results.json";
+import { getRecord } from "../data/records";
+import type { DatasetId, RegionId, VariableId } from "../data/records";
+import { presetRecord } from "../model";
+import { aggregate, seasonStart } from "./aggregate";
 import { analyzeWindow, pValueByLength } from "./trendStats";
 
-describe("trendStats against the stored NASA results", () => {
-  it("has all 23 records", () => {
-    expect(RECORDS).toHaveLength(23);
+interface Stored {
+  id: string;
+  region_id: RegionId;
+  variable: VariableId;
+  years: (number | string)[];
+  values: number[];
+  trend_per_decade: number;
+  trend_percent_per_decade: number | null;
+  change_over_period: number;
+  p_value: number;
+  status: string;
+}
+
+// The 23 results from the Python analysis (analysis/build_results.py).
+const STORED = stored as unknown as Stored[];
+
+describe("live analysis against the stored Python results", () => {
+  it("has all 23 stored results", () => {
+    expect(STORED).toHaveLength(23);
   });
 
-  it.each(RECORDS.map((r) => [r.id, r] as const))("%s: full record matches the stored result", (_id, r) => {
-    const first = r.year_numeric[0];
-    const last = r.year_numeric[r.year_numeric.length - 1];
-    const w = analyzeWindow(r.year_numeric, r.values, first, last);
-    expect(w).not.toBeNull();
-    expect(w!.status).toBe(r.status);
-    expect(w!.nYears).toBe(r.values.length);
-    // The stored values are rounded to 2 decimals, which can create a tie the
-    // original analysis did not have, so allow a small difference in p.
-    expect(Math.abs(w!.pValue - r.p_value)).toBeLessThan(0.01);
-    expect(w!.trendPerDecade).toBeCloseTo(r.trend_per_decade, 1);
+  it.each(STORED.map((r) => [r.id, r] as const))("%s: the browser gives the same result", (_id, r) => {
+    const dataset: DatasetId = r.id.endsWith("_merra2") ? "merra2" : "imerg";
+    const live = presetRecord(r.region_id, r.variable, dataset);
+    expect(live).toBeDefined();
+    expect(live!.status).toBe(r.status);
+    expect(live!.years).toEqual(r.years.map(String));
+    live!.values.forEach((v, i) => expect(v).toBeCloseTo(r.values[i], 1));
+    expect(live!.trend_per_decade).toBeCloseTo(r.trend_per_decade, 1);
+    expect(Math.abs(live!.p_value - r.p_value)).toBeLessThan(0.0006);
+    expect(live!.change_over_period).toBeCloseTo(r.change_over_period, 0);
+    if (r.trend_percent_per_decade !== null) expect(live!.trend_percent_per_decade).toBeCloseTo(r.trend_percent_per_decade, 0);
+    // The likely range always contains the rate itself.
+    expect(live!.range_per_decade[0]).toBeLessThanOrEqual(live!.trend_per_decade);
+    expect(live!.range_per_decade[1]).toBeGreaterThanOrEqual(live!.trend_per_decade);
   });
+});
+
+describe("choosing months", () => {
+  it("labels a season that crosses the New Year by the year it starts", () => {
+    expect(seasonStart([10, 11, 12, 1, 2, 3])).toBe(10);
+    expect(seasonStart([12, 1, 2])).toBe(12);
+    expect(seasonStart([4, 5, 6])).toBeNull();
+    expect(seasonStart([1, 12, 6])).toBeNull();
+  });
+
+  it("keeps only complete years and seasons", () => {
+    // 14 months starting in November 2000: one complete Dec–Feb season, one complete calendar year.
+    const values = Array.from({ length: 14 }, (_, i) => i + 1);
+    expect(aggregate([2000, 11], values, [12, 1, 2], "sum")).toEqual({ years: [2000], labels: ["2000/01"], values: [2 + 3 + 4] });
+    expect(aggregate([2000, 11], values, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "mean").years).toEqual([2001]);
+  });
+
+  it("analyses a single month for any place", () => {
+    const rec = getRecord("troodos", { variable: "rainfall", months: [3], key: "custom", label: "March rainfall" }, "imerg");
+    expect(rec).toBeDefined();
+    expect(rec!.values.length).toBeGreaterThanOrEqual(27);
+    expect(rec!.units).toBe("mm per season");
+  });
+});
+
+describe("periods", () => {
+  const r = presetRecord("cyprus_whole", "annual_total", "imerg")!;
 
   it("refuses periods shorter than 15 years", () => {
-    const r = RECORDS[0];
     expect(analyzeWindow(r.year_numeric, r.values, 2000, 2010)).toBeNull();
   });
 
   it("grows the period from 15 years to the full record", () => {
-    const r = RECORDS[0];
     const curve = pValueByLength(r.year_numeric, r.values);
     expect(curve[0].nYears).toBe(15);
     expect(curve[curve.length - 1].nYears).toBe(r.values.length);

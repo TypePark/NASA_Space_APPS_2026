@@ -1,14 +1,19 @@
-import { CASES, REGIONS, VARS } from "./content";
-import type { CardId, CaseId, IconName, RegionDef, VariableDef } from "./content";
-import { RECORDS, datasetIdOf, findRecord } from "./data/records";
-import type { DatasetId, RegionId, ResultRecord, VariableId } from "./data/records";
-import { analyzeWindow, pValueByLength, statusFor } from "./lib/trendStats";
+import { BASE_VARS, CASES, DATASET_ROLE, MONTHS_LONG, MONTHS_SHORT, REGIONS, VARS } from "./content";
+import type { BaseVariable, CardId, CaseId, IconName, RegionDef, VariableDef } from "./content";
+import { getRecord } from "./data/records";
+import type { DatasetId, RegionId, ResultRecord, Selection, VariableId } from "./data/records";
+import { SERIES, datasetsFor, findSeries, regionalDataset, regionsFor, yearsOf } from "./data/series";
+import { isRun } from "./lib/aggregate";
+import { analyzeWindow, pValueByLength } from "./lib/trendStats";
 import type { TrendStatus } from "./lib/trendStats";
 
 /** What the user has chosen. */
 export interface Settings {
   region: RegionId;
+  /** One of the five ready-made questions. */
   variable: VariableId;
+  /** A variable and months chosen in the detailed view. When set, it replaces `variable`. */
+  custom: { variable: string; months: number[] } | null;
   dataset: DatasetId;
   periodMode: "full" | "explore";
   startYear: number;
@@ -18,6 +23,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   region: "cyprus_whole",
   variable: "annual_total",
+  custom: null,
   dataset: "imerg",
   periodMode: "full",
   startYear: 0,
@@ -30,10 +36,10 @@ export const MIN_YEARS = 15;
 
 export function signed(v: number, digits: number): string {
   const s = Math.abs(v).toFixed(digits);
-  return (v > 0 ? "+" : v < 0 ? "−" : "") + s;
+  return (+s === 0 ? "" : v > 0 ? "+" : "−") + s;
 }
 
-/** p-value for a recalculated period, in the same style as the stored display strings. */
+/** p-value as shown to people. */
 export function pShow(p: number): string {
   if (p < 0.001) return "< 0.001";
   if (p >= 0.045 && p < 0.055) return p.toFixed(4);
@@ -72,28 +78,81 @@ export function shortLabel(rec: ResultRecord): string {
   return rec.variable_label.replace(/ \(.*\)$/, "");
 }
 
-export function recordName(rec: ResultRecord): string {
-  return `NASA ${rec.dataset}`;
+/** [1,2,3] → "Jan–Mar", [3] → "March", [3,7] → "Mar, Jul", [10..3] → "Oct–Mar". */
+export function monthsText(months: number[]): string {
+  const sorted = [...months].sort((a, b) => a - b);
+  if (sorted.length === 12) return "Whole year";
+  if (sorted.length === 1) return MONTHS_LONG[sorted[0] - 1];
+  if (isRun(sorted)) {
+    const set = new Set(sorted);
+    const first = sorted.find((m) => !set.has(m === 1 ? 12 : m - 1))!;
+    const last = sorted.find((m) => !set.has((m % 12) + 1))!;
+    return `${MONTHS_SHORT[first - 1]}–${MONTHS_SHORT[last - 1]}`;
+  }
+  return sorted.map((m) => MONTHS_SHORT[m - 1]).join(", ");
 }
 
-// ---------- settings rules ----------
+// ---------- what is selected ----------
 
-export function variableDef(id: VariableId): VariableDef {
+export function variableDef(id: string): VariableDef {
   return VARS.find((v) => v.id === id) ?? VARS[0];
+}
+
+export function baseVariable(id: string): BaseVariable {
+  return BASE_VARS.find((b) => b.id === id) ?? BASE_VARS[0];
 }
 
 export function regionDef(id: RegionId): RegionDef {
   return REGIONS.find((r) => r.id === id) ?? REGIONS[0];
 }
 
+function sameMonths(a: number[], b: number[]): boolean {
+  return a.length === b.length && [...a].sort().join() === [...b].sort().join();
+}
+
+/** The ready-made question that matches a variable and months, if there is one. */
+export function presetFor(variable: string, months: number[]): VariableDef | undefined {
+  return VARS.find((v) => v.base === variable && sameMonths(v.months, months));
+}
+
+/** The question being asked: a ready-made one, or one built from a custom choice. */
+export function activeDef(s: Settings): VariableDef {
+  if (!s.custom) return variableDef(s.variable);
+  const base = baseVariable(s.custom.variable);
+  const label = s.custom.months.length === 12 ? base.name : `${monthsText(s.custom.months)} ${base.noun}`;
+  return {
+    id: "custom",
+    base: base.id,
+    months: s.custom.months,
+    label,
+    q: `Is ${label.charAt(0).toLowerCase() + label.slice(1)} changing?`,
+    def: base.def,
+    icon: base.icon,
+    short: label,
+  };
+}
+
+function selectionOf(def: VariableDef): Selection {
+  return { variable: def.base, months: def.months, key: def.id, label: def.label };
+}
+
+/** A custom choice that equals a ready-made question becomes that question. */
+export function normalise(s: Settings): Settings {
+  if (!s.custom) return s;
+  const preset = presetFor(s.custom.variable, s.custom.months);
+  return preset ? { ...s, variable: preset.id as VariableId, custom: null } : s;
+}
+
 /**
- * Apply the availability rules:
- * temperature is whole island + MERRA-2; MERRA-2 rainfall is whole island only.
+ * Apply the availability rules from the data: a place or record the variable
+ * doesn't have is never used. Falls back to the whole island and to the
+ * first record that exists.
  */
-export function resolve(s: Settings): { region: RegionId; dataset: DatasetId; isTemp: boolean } {
-  const isTemp = variableDef(s.variable).kind === "temp";
-  if (isTemp) return { region: "cyprus_whole", dataset: "merra2", isTemp };
-  return { region: s.region, dataset: s.region === "cyprus_whole" ? s.dataset : "imerg", isTemp };
+export function resolve(s: Settings): { region: RegionId; dataset: DatasetId } {
+  const base = activeDef(s).base;
+  const region = regionsFor(base).includes(s.region) ? s.region : "cyprus_whole";
+  const sets = datasetsFor(base, region);
+  return { region, dataset: sets.includes(s.dataset) ? s.dataset : sets[0] };
 }
 
 export function settingsForCase(id: CaseId): Settings {
@@ -118,7 +177,8 @@ export function badgeFor(status: TrendStatus): Badge {
 export interface RegionRow {
   id: RegionId;
   name: string;
-  percent: number;
+  /** Signed size used for the bar: percent per decade, or the rate itself. */
+  amount: number;
   value: string;
   badge: Badge;
   fill: string;
@@ -127,9 +187,15 @@ export interface RegionRow {
 export interface View {
   rec: ResultRecord;
   vdef: VariableDef;
+  base: BaseVariable;
+  /** True when the user chose their own months. */
+  custom: boolean;
   region: RegionDef;
   dataset: DatasetId;
-  isTemp: boolean;
+  /** Places this variable has data for. */
+  places: RegionDef[];
+  /** Records that exist for this variable and place. */
+  datasets: { id: DatasetId; name: string; since: number }[];
   unit: string;
   perWord: "year" | "season";
   x0: number;
@@ -140,39 +206,63 @@ export interface View {
   badge: Badge;
   direction: { label: string; icon: IconName };
   headline: string;
+  /** Plain warnings shown under the badges. */
+  cautions: string[];
   periodText: string;
   rate: string;
   rateSub: string;
   total: string;
+  pDisplay: string;
   pSub: string;
   window: ReturnType<typeof analyzeWindow>;
   windowText: string;
   moreYears: { points: { n: number; p: number }[]; caption: string };
-  regionRows: RegionRow[];
+  sure: { range: string; rangeNote: string; depend: string };
+  /** Null when the variable has data for one place only. */
+  where: { intro: string; caption: string; rows: RegionRow[]; scale: number } | null;
   mapFills: Record<string, string>;
   mapLabels: Record<string, string>;
-  whereIntro: string;
   second: { rows: { name: string; sub: string; value: string; badge: Badge }[]; note: string } | null;
   rhythmText: string;
   cards: { id: CardId; title: string }[];
 }
 
-function trendFill(percent: number, significant: boolean): string {
-  if (Math.abs(percent) < 1) return "var(--neutral)";
-  if (percent < 0) return significant ? "var(--dry-strong)" : "var(--dry)";
-  return significant ? "var(--wet-strong)" : "var(--wet)";
+function trendFill(rec: ResultRecord): string {
+  const pct = rec.trend_percent_per_decade;
+  if (pct !== null && Math.abs(pct) < 1) return "var(--neutral)";
+  if (rec.trend_per_decade < 0) return rec.significant ? "var(--dry-strong)" : "var(--dry)";
+  return rec.significant ? "var(--wet-strong)" : "var(--wet)";
 }
 
+const RHYTHM_TEXT: Record<string, (rec: ResultRecord) => string> = {
+  rainfall: () =>
+    "Most rain falls from October to March, and summers are almost dry. Adding up whole years and seasons keeps this regular rhythm from hiding a trend.",
+  temperature: (rec) => {
+    const clim = rec.monthly_climatology;
+    return `Summers are about ${Math.round(Math.max(...clim) - Math.min(...clim))} ${unitOf(rec)} warmer than winters. Comparing the same months each year keeps that regular rhythm from hiding the trend.`;
+  },
+};
+
 export function buildView(s: Settings): View {
-  const { region: regionId, dataset, isTemp } = resolve(s);
-  const vdef = variableDef(s.variable);
-  const rec = findRecord(regionId, vdef.id, dataset) ?? RECORDS[0];
+  const vdef = activeDef(s);
+  const base = baseVariable(vdef.base);
+  const sel = selectionOf(vdef);
+  const { region: regionId, dataset } = resolve(s);
+  const fallback = getRecord("cyprus_whole", selectionOf(VARS[0]), "imerg")!;
+  const rec = getRecord(regionId, sel, dataset) ?? fallback;
   const region = regionDef(rec.region_id);
   const unit = unitOf(rec);
-  const perWord = rec.units.includes("season") ? "season" : "year";
+  const digits = rateDigits(rec);
+  const perWord = vdef.months.length === 12 ? "year" : "season";
   const years = rec.year_numeric;
   const x0 = years[0];
   const x1 = years[years.length - 1];
+
+  const places = REGIONS.filter((r) => regionsFor(base.id).includes(r.id));
+  const datasets = datasetsFor(base.id, rec.region_id).map((id) => {
+    const series = findSeries(base.id, rec.region_id, id)!;
+    return { id, name: series.dataset_name, since: yearsOf(series)[0] };
+  });
 
   // period
   const startYear = Math.max(x0, Math.min(x1 - (MIN_YEARS - 1), s.startYear));
@@ -193,97 +283,137 @@ export function buildView(s: Settings): View {
       : { label: "Increasing trend", icon: "trend" };
 
   let headline: string;
-  if (pct === null) {
-    const who = rec.variable === "summer_mean_temperature" ? "Summers in Cyprus have warmed" : "Cyprus has warmed";
-    headline = `${who} by about ${Math.abs(rec.change_over_period).toFixed(1)} ${rec.change_over_period_units} since ${x0}.`;
+  if (rec.status === "significant" && pct === null && base.id === "temperature") {
+    const who =
+      vdef.id === "annual_mean_temperature" ? "Cyprus has" : vdef.id === "summer_mean_temperature" ? "Summers in Cyprus have" : `${lab} in Cyprus has`;
+    const verb = vdef.id === "custom" ? (falling ? "fallen" : "risen") : falling ? "cooled" : "warmed";
+    headline = `${who} ${verb} by about ${Math.abs(rec.change_over_period).toFixed(1)} ${rec.change_over_period_units} since ${x0}.`;
   } else if (rec.status === "significant") {
-    headline = `${lab} in ${place} has ${falling ? "decreased" : "increased"} by about ${Math.abs(pct).toFixed(0)}% per decade.`;
-  } else if (Math.abs(pct) < 2) {
+    headline = `${lab} in ${place} has ${falling ? "decreased" : "increased"} by about ${Math.abs(rec.trend_per_decade).toFixed(pct === null ? digits : 0)} ${unit} per decade.`;
+  } else if (pct !== null && Math.abs(pct) < 2) {
     headline = `${lab} in ${place} shows no significant change.`;
   } else {
     headline = `${lab} in ${place} is ${falling ? "decreasing" : "increasing"}, but the trend is not significant.`;
   }
 
+  const cautions: string[] = [];
+  if (rec.significant && rec.p_value >= 0.01)
+    cautions.push(`This result is close to the line (p = ${pShow(rec.p_value)}). We tested many places and seasons, and a few can pass by chance.`);
+  if (rec.significant && rec.dependent && rec.p_adjusted >= 0.05)
+    cautions.push(`Allowing for years that depend on each other, the p-value rises to ${pShow(rec.p_adjusted)}, which is not significant.`);
+  if (vdef.id === "custom")
+    cautions.push("You chose your own months. The more combinations you try, the more likely one passes the test by chance.");
+
   // chosen period, recalculated in the browser
   const window = explore ? analyzeWindow(years, rec.values, startYear, endYear, MIN_YEARS) : null;
   const windowText = window
-    ? `${startYear}–${endYear} (${window.nYears} ${perWord}s): ${signed(window.trendPerDecade, rateDigits(rec))} ${rec.trend_units} · p = ${pShow(window.pValue)}`
+    ? `${startYear}–${endYear} (${window.nYears} ${perWord}s): ${signed(window.trendPerDecade, digits)} ${rec.trend_units} · p = ${pShow(window.pValue)}`
     : "";
 
-  // would more years help?
+  // does a longer record change the answer?
   const points = pValueByLength(years, rec.values, MIN_YEARS).map((o) => ({ n: o.nYears, p: o.pValue }));
   const firstP = points[0].p;
   const lastP = points[points.length - 1].p;
   const maxP = Math.max(...points.map((o) => o.p));
   let caption: string;
-  if (maxP < 0.05) caption = "Significant whichever period we use. This trend is clear.";
-  else if (lastP < 0.05) caption = "Significant with the full record, but not with every shorter period. It sits close to the line.";
-  else if (lastP < firstP * 0.5 && lastP < 0.2) caption = "Adding years is bringing it closer to significant, but it isn’t there.";
-  else caption = `Adding years hasn’t brought it closer to significant. Any trend is still hidden by the swings from one ${perWord} to the next.`;
+  if (maxP < 0.05) caption = "Significant whichever length of record we use. This trend is clear.";
+  else if (lastP < 0.05) caption = "Significant with the full record, but not with every shorter one. It sits close to the line.";
+  else if (lastP < firstP * 0.5 && lastP < 0.2) caption = "A longer record brings it closer to significant, but it isn’t there.";
+  else caption = `A longer record hasn’t brought it closer to significant. Any trend is still hidden by the swings from one ${perWord} to the next.`;
 
-  // where is it changing? (rainfall, satellite record)
-  const regionRows: RegionRow[] = [];
+  // how sure are we?
+  const [lo, hi] = rec.range_per_decade;
+  const range = `${signed(lo, digits)} to ${signed(hi, digits)} ${rec.trend_units}`;
+  const rangeNote =
+    lo > 0 || hi < 0
+      ? `The whole range is ${hi < 0 ? "below" : "above"} zero, so the direction is clear.`
+      : "The range includes zero, so the data cannot tell a rise from a fall.";
+  const r = signed(rec.lag1, 2).replace("+", "");
+  const depend = !rec.dependent
+    ? `The test needs each ${perWord} to be independent of the one before. Here they are (r = ${r}), so the p-value can be trusted.`
+    : `The test needs each ${perWord} to be independent of the one before. Here a high or low ${perWord} tends to be followed by another (r = ${r}), which makes the test too confident. Allowing for that, the p-value is ${pShow(rec.p_adjusted)}: ${rec.p_adjusted < 0.05 ? "still significant" : "not significant"}.`;
+
+  // where is it changing? (from the record that covers the most places)
+  const whereSet = regionalDataset(base.id);
+  const rows: RegionRow[] = [];
   const mapFills: Record<string, string> = {};
   const mapLabels: Record<string, string> = {};
   for (const rg of REGIONS) {
-    const rr = isTemp ? undefined : findRecord(rg.id, vdef.id, "imerg");
-    if (!rr || !hasPercent(rr)) {
-      if (rg.id !== "cyprus_whole") mapFills[rg.id] = isTemp ? "var(--warm)" : "var(--neutral)";
+    const rr = whereSet ? getRecord(rg.id, sel, whereSet) : undefined;
+    if (!rr) {
+      if (rg.id !== "cyprus_whole") mapFills[rg.id] = whereSet ? "var(--neutral)" : "var(--warm)";
       continue;
     }
-    const fill = trendFill(rr.trend_percent_per_decade, rr.significant);
+    const p = rr.trend_percent_per_decade;
+    const fill = trendFill(rr);
     if (rg.id !== "cyprus_whole") {
       mapFills[rg.id] = fill;
-      mapLabels[rg.id] = `${signed(rr.trend_percent_per_decade, 0)}%`;
+      mapLabels[rg.id] = p !== null ? `${signed(p, 0)}%` : `${signed(rr.trend_per_decade, digits)}`;
     }
-    regionRows.push({
+    rows.push({
       id: rg.id,
       name: rg.name,
-      percent: rr.trend_percent_per_decade,
-      value: `${signed(rr.trend_percent_per_decade, 1)}%`,
+      amount: p ?? rr.trend_per_decade,
+      value: p !== null ? `${signed(p, 1)}%` : `${signed(rr.trend_per_decade, digits)} ${unit}`,
       badge: badgeFor(rr.status),
       fill,
     });
   }
-  let whereIntro = "";
-  if (!isTemp) {
-    if (dataset === "merra2") whereIntro = "Each area, from the satellite record.";
-    else whereIntro = regionRows.every((r) => r.percent < 0) ? "Every area is leaning drier." : "Areas can change in different directions.";
+  let where: View["where"] = null;
+  if (whereSet && rows.length > 1) {
+    const whereName = findSeries(base.id, "cyprus_whole", whereSet)?.dataset_name ?? "";
+    const intro =
+      dataset !== whereSet
+        ? `Each area, from the ${whereName} record.`
+        : rows.every((x) => x.amount < 0)
+          ? `Every area is leaning ${base.down}.`
+          : rows.every((x) => x.amount > 0)
+            ? `Every area is leaning ${base.up}.`
+            : "Areas are changing in different directions.";
+    where = {
+      intro,
+      caption: `Change per decade, NASA ${whereName}. Bars to the left are ${base.down}, to the right ${base.up}.`,
+      rows,
+      scale: pct !== null ? 25 : Math.max(...rows.map((x) => Math.abs(x.amount))) * 1.25 || 1,
+    };
   }
 
-  // second opinion: both whole-island rainfall records
+  // second opinion: every record for this place
   let second: View["second"] = null;
-  if (!isTemp && rec.region_id === "cyprus_whole") {
-    const rows = (["imerg", "merra2"] as const)
-      .map((d) => findRecord("cyprus_whole", vdef.id, d))
-      .filter((r): r is ResultRecord => !!r)
-      .map((r) => ({
-        name: datasetIdOf(r) === "imerg" ? `Satellite record (${r.dataset})` : `Long model record (${r.dataset})`,
-        sub: periodText(r),
-        value: `${signed(r.trend_per_decade, 1)} ${r.trend_units}`,
-        badge: badgeFor(r.status),
-      }));
-    if (rows.length > 1) {
-      const sig = rows.filter((r) => r.badge.status === "significant").length;
+  if (datasets.length > 1) {
+    const recs = datasets.map((d) => getRecord(rec.region_id, sel, d.id)).filter((x): x is ResultRecord => !!x);
+    if (recs.length > 1) {
+      const sig = recs.filter((x) => x.significant).length;
+      const opposite = recs.some((x) => x.trend_per_decade < 0) && recs.some((x) => x.trend_per_decade > 0);
       const note =
-        sig === 0
-          ? "Two NASA records agree: neither shows a significant trend."
-          : sig === rows.length
-            ? "Two NASA records agree: both show a significant trend."
-            : "Two NASA records, two answers: only one of them shows a significant trend.";
-      second = { rows, note };
+        sig === recs.length
+          ? "Two NASA records agree: both show a significant trend."
+          : sig > 0
+            ? "Two NASA records, two answers: only one of them shows a significant trend."
+            : opposite
+              ? "The two NASA records point in opposite directions, and neither is significant. The data cannot tell us which way this is going."
+              : "Two NASA records agree: neither shows a significant trend.";
+      second = {
+        rows: recs.map((x) => ({
+          name: `${DATASET_ROLE[x.dataset_id] ?? "Record"} (${x.dataset})`,
+          sub: periodText(x),
+          value: `${signed(x.trend_per_decade, 1)} ${x.trend_units}`,
+          badge: badgeFor(x.status),
+        })),
+        note,
+      };
     }
   }
 
-  // yearly rhythm
-  const clim = rec.monthly_climatology;
-  const rhythmText = isTemp
-    ? `Summers are about ${Math.round(Math.max(...clim) - Math.min(...clim))} ${unit} warmer than winters. Comparing yearly averages keeps that regular rhythm from hiding the trend.`
-    : "Most rain falls from October to March, and summers are almost dry. Adding up whole years and seasons keeps this regular rhythm from hiding a trend.";
+  const rhythmText = (
+    RHYTHM_TEXT[base.id] ??
+    (() => "The chart shows the usual value for each month. Comparing the same months each year keeps this regular rhythm from hiding a trend.")
+  )(rec);
 
   const cards: View["cards"] = [
     { id: "series", title: rec.variable_label },
-    { id: "years", title: "Would more years help?" },
+    { id: "sure", title: "How sure are we?" },
+    { id: "years", title: "Does a longer record change the answer?" },
     { id: "rhythm", title: "The yearly rhythm" },
   ];
   if (second) cards.push({ id: "second", title: "Second opinion: two NASA records" });
@@ -291,9 +421,12 @@ export function buildView(s: Settings): View {
   return {
     rec,
     vdef,
+    base,
+    custom: vdef.id === "custom",
     region,
     dataset,
-    isTemp,
+    places,
+    datasets,
     unit,
     perWord,
     x0,
@@ -304,18 +437,20 @@ export function buildView(s: Settings): View {
     badge,
     direction,
     headline,
+    cautions,
     periodText: periodText(rec),
     rate: formatRate(rec),
     rateSub: hasPercent(rec) ? `${signed(rec.trend_percent_per_decade, 1)}% of the average` : "",
     total: formatChange(rec, hasPercent(rec) ? 0 : 1),
+    pDisplay: pShow(rec.p_value),
     pSub: rec.significant ? "below 0.05" : "0.05 or above",
     window,
     windowText,
     moreYears: { points, caption },
-    regionRows,
+    sure: { range, rangeNote, depend },
+    where,
     mapFills,
     mapLabels,
-    whereIntro,
     second,
     rhythmText,
     cards,
@@ -345,27 +480,33 @@ export function buildAnswers(v: View): Answer[] {
         : `${lab} is ${falling ? "decreasing" : "increasing"}.`;
 
   let where: string;
-  if (v.isTemp) where = "The whole island.";
-  else if (v.dataset === "merra2") where = `The whole island, over the long record from ${v.x0}.`;
+  if (!v.where) where = "The whole island.";
   else {
-    const areas = v.regionRows.filter((r) => r.id !== "cyprus_whole");
-    const strongest = areas.reduce<RegionRow | null>((a, r) => (!a || Math.abs(r.percent) > Math.abs(a.percent) ? r : a), null);
-    const lean = areas.every((r) => r.percent < 0)
-      ? "Across Cyprus every area is leaning drier"
-      : areas.every((r) => r.percent > 0)
-        ? "Across Cyprus every area is leaning wetter"
+    const whole = v.region.id === "cyprus_whole" && v.dataset !== regionalDataset(v.base.id);
+    const areas = v.where.rows.filter((r) => r.id !== "cyprus_whole");
+    const strongest = areas.reduce<RegionRow | null>((a, r) => (!a || Math.abs(r.amount) > Math.abs(a.amount) ? r : a), null);
+    const lean = areas.every((r) => r.amount < 0)
+      ? `Across Cyprus every area is leaning ${v.base.down}`
+      : areas.every((r) => r.amount > 0)
+        ? `Across Cyprus every area is leaning ${v.base.up}`
         : "Across Cyprus the areas are changing in different directions";
-    where = `${v.region.name}.` + (strongest ? ` ${lean}; the largest change is in ${strongest.name} (${strongest.value} per decade).` : "");
+    where = whole
+      ? `The whole island, over the long record from ${v.x0}.`
+      : `${v.region.id === "cyprus_whole" ? "The whole island" : v.region.name}.` + (strongest ? ` ${lean}; the largest change is in ${strongest.name} (${strongest.value} per decade).` : "");
   }
 
+  const d = rateDigits(rec);
   const howMuch =
-    `${signed(rec.trend_per_decade, rateDigits(rec))} ${rec.trend_units}` +
+    `${signed(rec.trend_per_decade, d)} ${rec.trend_units}` +
     (pct !== null ? ` (${signed(pct, 1)}%)` : "") +
-    `, about ${formatChange(rec, 1)} over ${v.periodText}.`;
+    `. The likely range is ${signed(rec.range_per_decade[0], d)} to ${signed(rec.range_per_decade[1], d)} ${rec.trend_units}. ` +
+    `Along the trend line, that is about ${formatChange(rec, 1)} over ${v.periodText}.`;
 
-  const significant = rec.significant
-    ? `Yes. The p-value is ${rec.p_value_display}, below 0.05.`
-    : `No. The p-value is ${rec.p_value_display}, not below 0.05. That doesn’t mean there is no trend: a longer record may be needed.`;
+  const p = pShow(rec.p_value);
+  let significant = rec.significant
+    ? `Yes. The p-value is ${p}, below 0.05.`
+    : `No. The p-value is ${p}, not below 0.05. That doesn’t mean there is no trend: a longer record may be needed.`;
+  if (v.cautions.length) significant += ` ${v.cautions[0]}`;
 
   return [
     { q: "What is changing?", text: what, icon: v.vdef.icon, tone: "plain" },
@@ -375,18 +516,30 @@ export function buildAnswers(v: View): Answer[] {
   ];
 }
 
-/** All 23 results for the Data & Method table: MERRA-2 first, then by place and measure. */
+/** Every ready-made question, for every place and record that has data. */
 export function allResultRows() {
-  return RECORDS.map((r) => ({
-    id: r.id,
-    place: r.region,
-    measure: r.variable_label,
-    record: r.dataset,
-    trend: formatRate(r),
-    p: r.p_value_display,
-    badge: badgeFor(r.status),
-    sortKey: (datasetIdOf(r) === "merra2" ? "0" : "1") + r.region_id + r.variable,
-  })).sort((a, b) => (a.sortKey < b.sortKey ? -1 : 1));
+  const rows = [];
+  for (const def of VARS) {
+    for (const s of SERIES.filter((x) => x.variable === def.base)) {
+      const r = getRecord(s.region_id, selectionOf(def), s.dataset);
+      if (!r) continue;
+      rows.push({
+        id: `${def.id}|${s.id}`,
+        place: r.region,
+        measure: r.variable_label,
+        record: r.dataset,
+        trend: formatRate(r),
+        range: `${signed(r.range_per_decade[0], rateDigits(r))} to ${signed(r.range_per_decade[1], rateDigits(r))}`,
+        p: pShow(r.p_value),
+        badge: badgeFor(r.status),
+        sortKey: (s.dataset === "merra2" ? "0" : "1") + s.region_id + def.id,
+      });
+    }
+  }
+  return rows.sort((a, b) => (a.sortKey < b.sortKey ? -1 : 1));
 }
 
-export { statusFor };
+/** The record behind one ready-made question (used by the tests and the Rain map). */
+export function presetRecord(region: RegionId, variable: VariableId, dataset: DatasetId): ResultRecord | undefined {
+  return getRecord(region, selectionOf(variableDef(variable)), dataset);
+}

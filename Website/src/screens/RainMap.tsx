@@ -48,12 +48,12 @@ export default function RainMap({ onOpen }: RainMapProps) {
               <Icon name={view.badge.icon} size={18} strokeWidth={1.9} />
               {view.badge.label}
             </span>
-            <span className="num small">p = {rec.p_value_display}</span>
+            <span className="num small">p = {view.pDisplay}</span>
           </div>
 
           <div className="stack-2">
             <span className="group-label">Places</span>
-            {view.regionRows.map((r) => (
+            {(view.where?.rows ?? []).map((r) => (
               <button
                 key={r.id}
                 type="button"

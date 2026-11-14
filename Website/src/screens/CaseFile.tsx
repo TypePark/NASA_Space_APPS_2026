@@ -10,9 +10,9 @@ interface CaseFileProps {
 
 export default function CaseFile({ view, onLead, onNewCase }: CaseFileProps) {
   const answers = buildAnswers(view);
-  const lead = view.isTemp
+  const lead = view.base.id === "temperature"
     ? {
-        text: "The heat is clear. Is rainfall changing too?",
+        text: view.rec.significant ? "The heat is clear. Is rainfall changing too?" : "Is rainfall changing?",
         button: "Check rainfall",
         patch: { variable: "annual_total", region: "cyprus_whole", dataset: "imerg" } as const,
       }

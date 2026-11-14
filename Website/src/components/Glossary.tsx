@@ -38,12 +38,13 @@ export default function Glossary({ term, onClose }: GlossaryProps) {
             <Icon name="x" strokeWidth={2} />
           </button>
         </div>
-        <p className="small muted">Every term in plain words.</p>
+        <p className="small muted">Every term in plain words: the short answer first, then how it works.</p>
         <dl className="glossary-list">
           {entries.map((g) => (
             <div key={g.id} className={g.id === term ? "glossary-item is-on" : "glossary-item"}>
               <dt>{g.term}</dt>
               <dd>{g.text}</dd>
+              <dd className="glossary-more">{g.more}</dd>
             </div>
           ))}
         </dl>

@@ -2,7 +2,8 @@ import Icon from "../components/Icon";
 import RegionMap from "../components/RegionMap";
 import { REGIONS, VARS } from "../content";
 import type { DatasetId, RegionId, VariableId } from "../data/records";
-import { regionDef, variableDef } from "../model";
+import { datasetsFor, regionsFor } from "../data/series";
+import { regionDef, resolve, variableDef } from "../model";
 import type { Settings } from "../model";
 
 interface SetupProps {
@@ -20,10 +21,9 @@ const RECORDS: { id: DatasetId; label: string; sub: string; icon: "calendar" | "
 
 export default function Setup({ settings, step, onStep, onChange, onOpen }: SetupProps) {
   const chosen = regionDef(settings.region);
-  const isTemp = variableDef(settings.variable).kind === "temp";
   const whole = settings.region === "cyprus_whole";
-  // The record choice only exists for whole-island rainfall.
-  const total = !isTemp && whole ? 3 : 2;
+  // The record step only appears when the question has more than one record for the place.
+  const total = datasetsFor(variableDef(settings.variable).base, resolve(settings).region).length > 1 ? 3 : 2;
   const cur = Math.max(1, Math.min(total, step));
 
   const fills: Record<string, string> = {};
@@ -50,7 +50,7 @@ export default function Setup({ settings, step, onStep, onChange, onOpen }: Setu
       {cur === 1 && (
         <div className="stack-24">
           <div className="stack-6">
-            <h1 className="title">Where are you interested in?</h1>
+            <h1 className="title">Where do you want to look?</h1>
             <p className="lead muted">Tap an area on the map, or choose one below.</p>
           </div>
           <div className="setup-where">
@@ -76,7 +76,7 @@ export default function Setup({ settings, step, onStep, onChange, onOpen }: Setu
               <div className="hint">
                 <Icon name="bulb" size={22} className="accent-ink" />
                 <span className="stack-2">
-                  <span className="small strong">Why look at {chosen.name}?</span>
+                  <span className="small strong">Why look at {whole ? "the whole island" : chosen.name}?</span>
                   <span className="small muted">{chosen.hint}</span>
                 </span>
               </div>
@@ -97,7 +97,7 @@ export default function Setup({ settings, step, onStep, onChange, onOpen }: Setu
                 key={v.id}
                 type="button"
                 role="radio"
-                aria-checked={v.id === settings.variable}
+                aria-checked={!settings.custom && v.id === settings.variable}
                 className="choice choice-question"
                 onClick={() => onChange({ variable: v.id as VariableId })}
               >
@@ -105,7 +105,7 @@ export default function Setup({ settings, step, onStep, onChange, onOpen }: Setu
                   <Icon name={v.icon} />
                 </span>
                 <span className="stack-2">
-                  <span className="strong">{v.kind === "temp" && !whole ? `${v.q} · whole island` : v.q}</span>
+                  <span className="strong">{!regionsFor(v.base).includes(settings.region) ? `${v.q} · whole island` : v.q}</span>
                   <span className="small muted">{v.def}</span>
                 </span>
               </button>

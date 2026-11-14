@@ -1,6 +1,8 @@
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
+import type { KeyboardEvent, PointerEvent } from "react";
+import { MONTHS_LONG } from "../content";
 import type { View } from "../model";
-import { rateDigits, signed } from "../model";
+import { pShow, rateDigits, signed } from "../model";
 
 const FONT = "Figtree, sans-serif";
 
@@ -29,6 +31,59 @@ function useIsPhone(): boolean {
   return useSyncExternalStore(subscribePhone, () => window.matchMedia(PHONE).matches);
 }
 
+/**
+ * Which point the reader is looking at: the one nearest the pointer (mouse or
+ * touch), or the one chosen with the left and right arrow keys.
+ */
+function useHover(count: number, xOf: (i: number) => number, width: number) {
+  const [raw, setRaw] = useState<number | null>(null);
+  const index = raw !== null && raw < count ? raw : null;
+  const nearest = (e: PointerEvent<SVGSVGElement>) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - box.left) / box.width) * width;
+    let best = 0;
+    for (let i = 1; i < count; i++) if (Math.abs(xOf(i) - x) < Math.abs(xOf(best) - x)) best = i;
+    setRaw(best);
+  };
+  const onKeyDown = (e: KeyboardEvent<SVGSVGElement>) => {
+    if (e.key === "ArrowRight") setRaw(index === null ? 0 : Math.min(count - 1, index + 1));
+    else if (e.key === "ArrowLeft") setRaw(index === null ? count - 1 : Math.max(0, index - 1));
+    else if (e.key === "Escape") setRaw(null);
+    else return;
+    e.preventDefault();
+  };
+  return {
+    index,
+    handlers: { tabIndex: 0, onPointerMove: nearest, onPointerDown: nearest, onPointerLeave: () => setRaw(null), onBlur: () => setRaw(null), onKeyDown },
+  };
+}
+
+/** A small label next to the point being looked at. */
+function Tip({ x, y, lines, width, font = 13 }: { x: number; y: number; lines: string[]; width: number; font?: number }) {
+  const w = Math.max(...lines.map((l) => l.length)) * font * 0.58 + 20;
+  const h = lines.length * font * 1.4 + 12;
+  const left = x + 12 + w > width ? x - 12 - w : x + 12;
+  const top = Math.max(2, y - h - 10);
+  return (
+    <g pointerEvents="none" aria-hidden="true">
+      <rect x={left} y={top} width={w} height={h} rx="8" fill="var(--ink)" />
+      {lines.map((l, i) => (
+        <text
+          key={i}
+          x={left + 10}
+          y={top + 6 + font * 1.4 * (i + 0.75)}
+          fontSize={font}
+          fontWeight={i === 0 ? 600 : 400}
+          fill="var(--bg)"
+          fontFamily={FONT}
+        >
+          {l}
+        </text>
+      ))}
+    </g>
+  );
+}
+
 /** Card 1: yearly values as dots, a thin connecting line, the trend line and a dashed average. */
 export function SeriesChart({ view }: { view: View }) {
   const { rec, x0, x1, explore, startYear, endYear, unit } = view;
@@ -41,19 +96,25 @@ export function SeriesChart({ view }: { view: View }) {
   const vmin = Math.min(...rec.values);
   const vmax = Math.max(...rec.values);
   const pad = (vmax - vmin) * 0.08;
-  const nt = niceTicks(vmin - pad, vmax + pad, 5);
+  // Amounts that are added up (rainfall) cannot go below zero.
+  const floor = rec.trend_percent_per_decade !== null && vmin >= 0 ? 0 : -Infinity;
+  const nt = niceTicks(Math.max(floor, vmin - pad), vmax + pad, 5);
   const X = (yr: number) => L + ((yr - x0) / (x1 - x0)) * (R - L);
   const Y = (v: number) => B - ((v - nt.lo) / (nt.hi - nt.lo)) * (B - T);
   const line = (yr: number) => rec.trend_line.slope_per_year * yr + rec.trend_line.intercept;
   const step = (R - L) / (x1 - x0);
   const win = view.window;
 
+  const hover = useHover(years.length, (i) => X(years[i]), W);
+  const at = hover.index;
+
   const aria =
     `${rec.variable_label} for ${rec.region}, ${view.periodText}. ` +
-    `Trend ${signed(rec.trend_per_decade, rateDigits(rec))} ${rec.trend_units}.`;
+    `Trend ${signed(rec.trend_per_decade, rateDigits(rec))} ${rec.trend_units}. ` +
+    "Use the left and right arrow keys to read each value.";
 
   return (
-    <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={aria}>
+    <svg className="chart chart-hover" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={aria} {...hover.handlers}>
       {nt.ticks.map((v) => (
         <g key={v}>
           <line x1={L} x2={R} y1={Y(v)} y2={Y(v)} stroke="var(--grid)" strokeWidth="1" />
@@ -87,11 +148,7 @@ export function SeriesChart({ view }: { view: View }) {
           cy={Y(rec.values[i])}
           r={phone ? 3.5 : 4.5}
           fill={!explore || (yr >= startYear && yr <= endYear) ? "var(--series)" : "var(--series-line)"}
-        >
-          <title>
-            {rec.years[i]}: {rec.values[i]} {rec.units}
-          </title>
-        </circle>
+        />
       ))}
       <line
         x1={X(x0)}
@@ -114,6 +171,19 @@ export function SeriesChart({ view }: { view: View }) {
           strokeLinecap="round"
         />
       )}
+      {at !== null && (
+        <>
+          <line x1={X(years[at])} x2={X(years[at])} y1={T} y2={B} stroke="var(--axis)" strokeWidth="1" strokeDasharray="2 4" />
+          <circle cx={X(years[at])} cy={Y(rec.values[at])} r={phone ? 6 : 7} fill="var(--trend)" stroke="var(--surface)" strokeWidth="2.5" />
+          <Tip
+            x={X(years[at])}
+            y={Y(rec.values[at])}
+            width={W}
+            font={font}
+            lines={[rec.years[at], `${rec.values[at].toFixed(rateDigits(rec))} ${unit}`, `Trend line: ${line(years[at]).toFixed(rateDigits(rec))} ${unit}`]}
+          />
+        </>
+      )}
     </svg>
   );
 }
@@ -125,12 +195,15 @@ export function MoreYearsChart({ view }: { view: View }) {
   const first = points[0].n;
   const X = (k: number) => 44 + ((k - first) / Math.max(1, n - first)) * 404;
   const Y = (p: number) => 168 - p * 152;
+  const hover = useHover(points.length, (i) => X(points[i].n), 460);
+  const at = hover.index;
   return (
     <svg
-      className="chart chart-side"
+      className="chart chart-side chart-hover"
       viewBox="0 0 460 200"
       role="img"
       aria-label={`p-value as the period grows from ${first} to ${n} ${view.perWord}s. ${caption}`}
+      {...hover.handlers}
     >
       <line x1="44" x2="448" y1="168" y2="168" stroke="var(--grid)" />
       <line x1="44" x2="448" y1={Y(0.05)} y2={Y(0.05)} stroke="var(--sig-line)" strokeWidth="1.5" strokeDasharray="4 4" />
@@ -159,6 +232,18 @@ export function MoreYearsChart({ view }: { view: View }) {
       <text x="448" y="192" textAnchor="end" fontSize="12" fill="var(--axis)" fontFamily={FONT}>
         {n} {view.perWord}s
       </text>
+      {at !== null && (
+        <>
+          <circle cx={X(points[at].n)} cy={Y(points[at].p)} r="5.5" fill="var(--trend)" stroke="var(--surface)" strokeWidth="2" />
+          <Tip
+            x={X(points[at].n)}
+            y={Y(points[at].p)}
+            width={460}
+            font={12}
+            lines={[`Latest ${points[at].n} ${view.perWord}s`, `p = ${pShow(points[at].p)}`]}
+          />
+        </>
+      )}
     </svg>
   );
 }
@@ -167,28 +252,42 @@ const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 
 /** Card 3: the average value for each month. */
 export function RhythmChart({ view }: { view: View }) {
-  const { rec, isTemp, unit } = view;
+  const { rec, unit } = view;
+  const sums = rec.trend_percent_per_decade !== null;
   const clim = rec.monthly_climatology;
   const cmax = Math.max(...clim);
-  const base = isTemp ? Math.floor(Math.min(...clim)) - 3 : 0;
+  const base = sums ? 0 : Math.floor(Math.min(...clim)) - 3;
+  const chosen = new Set(view.vdef.months);
+  const average = clim.reduce((a, b) => a + b, 0) / 12;
+  const barX = (i: number) => 8 + i * 37.5;
+  const barH = (v: number) => Math.max(2, ((v - base) / (cmax - base)) * 150);
+  const hover = useHover(12, (i) => barX(i) + 13, 460);
+  const at = hover.index;
   return (
     <svg
-      className="chart chart-side"
+      className="chart chart-side chart-hover"
       viewBox="0 0 460 190"
       role="img"
-      aria-label={`${isTemp ? "Average monthly temperature" : "Average monthly rainfall"}, January to December.`}
+      aria-label={`Average ${view.base.noun} for each month, January to December.`}
+      {...hover.handlers}
     >
       {clim.map((v, i) => {
-        const h = Math.max(2, ((v - base) / (cmax - base)) * 150);
-        const x = 8 + i * 37.5;
-        const strong = isTemp ? i >= 5 && i <= 7 : i <= 2 || i >= 9;
+        const h = barH(v);
+        const x = barX(i);
+        // Highlight the chosen months; for a whole year, the months above average.
+        const strong = chosen.size < 12 ? chosen.has(i + 1) : v >= average;
         return (
           <g key={i}>
-            <rect x={x} y={168 - h} width="26" height={h} rx="6" fill={strong ? (isTemp ? "var(--trend)" : "var(--series)") : "var(--series-line)"}>
-              <title>
-                {v} {unit}
-              </title>
-            </rect>
+            <rect
+              x={x}
+              y={168 - h}
+              width="26"
+              height={h}
+              rx="6"
+              fill={strong ? (sums ? "var(--series)" : "var(--trend)") : "var(--series-line)"}
+              stroke={at === i ? "var(--ink)" : "none"}
+              strokeWidth="2"
+            />
             <text x={x + 13} y="182" textAnchor="middle" fontSize="12" fill="var(--axis)" fontFamily={FONT}>
               {MONTHS[i]}
             </text>
@@ -196,8 +295,11 @@ export function RhythmChart({ view }: { view: View }) {
         );
       })}
       <text x="4" y="14" fontSize="12" fill="var(--axis)" fontFamily={FONT}>
-        {isTemp ? "Average temperature" : "Average rain"} per month ({unit})
+        Average {view.base.noun} per month ({unit})
       </text>
+      {at !== null && (
+        <Tip x={barX(at) + 13} y={168 - barH(clim[at])} width={460} font={12} lines={[MONTHS_LONG[at], `${clim[at].toFixed(1)} ${unit}`]} />
+      )}
     </svg>
   );
 }

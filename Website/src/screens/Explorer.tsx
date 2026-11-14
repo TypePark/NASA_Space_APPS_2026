@@ -1,10 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Icon from "../components/Icon";
 import RegionMap from "../components/RegionMap";
 import { MoreYearsChart, RhythmChart, SeriesChart } from "../components/charts";
-import { REGIONS, VARS } from "../content";
+import { BASE_VARS, MONTHS_LONG, MONTHS_SHORT, MONTH_SETS, VARS } from "../content";
 import type { DemoTarget } from "../content";
-import { MIN_YEARS } from "../model";
+import type { VariableId } from "../data/records";
+import { SERIES, yearsOf } from "../data/series";
+import { MIN_YEARS, monthsText } from "../model";
 import type { Settings, View } from "../model";
 
 export interface DemoBar {
@@ -46,10 +48,33 @@ function Term({ id, onTerm, children }: { id: string; onTerm: (id: string) => vo
   );
 }
 
+function sameSet(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((m) => b.includes(m));
+}
+
+/** "NASA GPM IMERG 1998–2025 · NASA MERRA-2 1980–2026", read from the data. */
+function coverage(variable: string): string {
+  const seen = new Map<string, [number, number]>();
+  for (const s of SERIES) {
+    if (s.variable !== variable) continue;
+    const [a, b] = yearsOf(s);
+    const cur = seen.get(s.dataset_name);
+    seen.set(s.dataset_name, cur ? [Math.min(a, cur[0]), Math.max(b, cur[1])] : [a, b]);
+  }
+  return [...seen].map(([name, [a, b]]) => `NASA ${name} ${a}–${b}`).join(" · ");
+}
+
 export default function Explorer({ view, card, onCard, panelOpen, onPanel, onChange, onTerm, demo }: ExplorerProps) {
   const { rec, cards } = view;
   const cardIdx = Math.max(0, Math.min(cards.length - 1, card));
   const cur = cards[cardIdx].id;
+  // The Adjust card has a simple view (five questions) and a detailed view (variable and months).
+  const [detailed, setDetailed] = useState(view.custom);
+  const months = view.vdef.months;
+  const toggleMonth = (m: number) => {
+    const next = months.includes(m) ? months.filter((x) => x !== m) : [...months, m].sort((a, b) => a - b);
+    if (next.length) onChange({ custom: { variable: view.base.id, months: next } });
+  };
   const hl = (t: DemoTarget) => (demo?.target === t ? " is-hl" : "");
   const deckHl = demo && (demo.target === "chart" || demo.target === "deck") ? " is-hl" : "";
 
@@ -100,27 +125,100 @@ export default function Explorer({ view, card, onCard, panelOpen, onPanel, onCha
             <div className="adjust-panel" role="dialog" aria-label="Adjust what you see">
               <div className="adjust-head">
                 <span className="strong">Adjust what you see</span>
-                <button type="button" className="icon-btn icon-btn-soft icon-btn-sm" aria-label="Close" onClick={() => onPanel(false)}>
-                  <Icon name="x" size={18} strokeWidth={2} />
-                </button>
-              </div>
-
-              <div role="group" aria-label="Question" className="stack-8">
-                <span className="group-label">Question</span>
-                <div className="row row-tight">
-                  {VARS.map((v) => (
-                    <Pill key={v.id} on={v.id === view.vdef.id} onClick={() => onChange({ variable: v.id })}>
-                      <Icon name={v.icon} size={16} className="accent-ink" />
-                      {v.short}
-                    </Pill>
-                  ))}
+                <div className="row row-tight row-center">
+                  <button
+                    type="button"
+                    className="pill view-switch"
+                    aria-pressed={detailed}
+                    onClick={() => setDetailed(!detailed)}
+                  >
+                    <Icon name={detailed ? "check" : "layers"} size={16} className="accent-ink" />
+                    More options
+                  </button>
+                  <button type="button" className="icon-btn icon-btn-soft icon-btn-sm" aria-label="Close" onClick={() => onPanel(false)}>
+                    <Icon name="x" size={18} strokeWidth={2} />
+                  </button>
                 </div>
               </div>
+
+              {!detailed && (
+                <div role="group" aria-label="Question" className="stack-8">
+                  <span className="group-label">Question</span>
+                  <div className="row row-tight">
+                    {VARS.map((v) => (
+                      <Pill key={v.id} on={v.id === view.vdef.id} onClick={() => onChange({ variable: v.id as VariableId })}>
+                        <Icon name={v.icon} size={16} className="accent-ink" />
+                        {v.short}
+                      </Pill>
+                    ))}
+                  </div>
+                  {view.custom && (
+                    <span className="tiny muted">
+                      Showing your own choice: {view.vdef.short}. Open “More options” to change it.
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {detailed && (
+                <>
+                  <div role="radiogroup" aria-label="Variable" className="stack-8">
+                    <span className="group-label">Variable</span>
+                    {BASE_VARS.map((b) => (
+                      <button
+                        key={b.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={b.id === view.base.id}
+                        className="choice choice-variable"
+                        onClick={() => onChange({ custom: { variable: b.id, months } })}
+                      >
+                        <span className="round-icon round-icon-sm">
+                          <Icon name={b.icon} />
+                        </span>
+                        <span className="stack-2">
+                          <span className="small strong">
+                            {b.name} <span className="tiny muted">· {b.group}</span>
+                          </span>
+                          <span className="tiny muted">{b.def}</span>
+                          <span className="tiny muted">{coverage(b.id)}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div role="group" aria-label="Months" className="stack-8">
+                    <span className="group-label">Months · {monthsText(months)}</span>
+                    <div className="row row-tight">
+                      {MONTH_SETS.map((m) => (
+                        <Pill key={m.id} on={sameSet(m.months, months)} onClick={() => onChange({ custom: { variable: view.base.id, months: m.months } })}>
+                          {m.label}
+                        </Pill>
+                      ))}
+                    </div>
+                    <div className="month-grid">
+                      {MONTHS_SHORT.map((name, i) => (
+                        <button
+                          key={name}
+                          type="button"
+                          className="pill month"
+                          aria-pressed={months.includes(i + 1)}
+                          aria-label={MONTHS_LONG[i]}
+                          onClick={() => toggleMonth(i + 1)}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="tiny muted">Tap months to build your own season. Only complete seasons are counted.</span>
+                  </div>
+                </>
+              )}
 
               <div role="group" aria-label="Place" className="stack-8">
                 <span className="group-label">Place</span>
                 <div className="row row-tight">
-                  {REGIONS.filter((r) => !view.isTemp || r.id === "cyprus_whole").map((r) => (
+                  {view.places.map((r) => (
                     <Pill key={r.id} on={r.id === view.region.id} onClick={() => onChange({ region: r.id })}>
                       {r.name}
                     </Pill>
@@ -128,16 +226,15 @@ export default function Explorer({ view, card, onCard, panelOpen, onPanel, onCha
                 </div>
               </div>
 
-              {!view.isTemp && view.region.id === "cyprus_whole" && (
+              {view.datasets.length > 1 && (
                 <div role="group" aria-label="Record" className="stack-8">
                   <span className="group-label">Record</span>
                   <div className="row row-tight">
-                    <Pill on={view.dataset === "imerg"} onClick={() => onChange({ dataset: "imerg" })}>
-                      Since 1998 · detailed
-                    </Pill>
-                    <Pill on={view.dataset === "merra2"} onClick={() => onChange({ dataset: "merra2" })}>
-                      Since 1980 · longer
-                    </Pill>
+                    {view.datasets.map((d, i) => (
+                      <Pill key={d.id} on={view.dataset === d.id} onClick={() => onChange({ dataset: d.id })}>
+                        {detailed ? `NASA ${d.name} · since ${d.since}` : `Since ${d.since} · ${i === 0 ? "detailed" : "longer"}`}
+                      </Pill>
+                    ))}
                   </div>
                 </div>
               )}
@@ -207,21 +304,29 @@ export default function Explorer({ view, card, onCard, panelOpen, onPanel, onCha
           </button>
         </div>
 
+        {view.cautions.map((c) => (
+          <p key={c} className="caution small">
+            <Icon name="info" size={18} />
+            {c}
+          </p>
+        ))}
+
         <div className={"key-numbers" + hl("numbers")}>
           <div className="key-number">
             <span className="small muted">Change per decade</span>
             <span className="num big">{view.rate}</span>
             {view.rateSub && <span className="tiny muted">{view.rateSub}</span>}
+            <span className="tiny muted">likely {view.sure.range.replace(/ per decade$/, "")}</span>
           </div>
           <div className="key-number">
-            <span className="small muted">Total change, {view.periodText}</span>
+            <span className="small muted">Change along the trend line, {view.periodText}</span>
             <span className="num big">{view.total}</span>
           </div>
           <div className="key-number">
             <button type="button" className="term term-muted" onClick={() => onTerm("p_value")}>
               p-value
             </button>
-            <span className="num big">{rec.p_value_display}</span>
+            <span className="num big">{view.pDisplay}</span>
             <span className="tiny muted">{view.pSub}</span>
           </div>
         </div>
@@ -311,6 +416,37 @@ export default function Explorer({ view, card, onCard, panelOpen, onPanel, onCha
                 </div>
               )}
 
+              {cur === "sure" && (
+                <div className="stack-12">
+                  <div className="second-row">
+                    <span className="stack-0">
+                      <span className="strong">
+                        <Term id="range" onTerm={onTerm}>
+                          Likely range
+                        </Term>{" "}
+                        of the change
+                      </span>
+                      <span className="small muted">{view.sure.rangeNote}</span>
+                    </span>
+                    <span className="num strong">{view.sure.range}</span>
+                  </div>
+                  <div className="second-row">
+                    <span className="stack-0">
+                      <span className="strong">
+                        <Term id="dependence" onTerm={onTerm}>
+                          Year-to-year dependence
+                        </Term>
+                      </span>
+                      <span className="small muted">{view.sure.depend}</span>
+                    </span>
+                  </div>
+                  <p className="small muted">
+                    The rate of change is an estimate from {rec.values.length} {view.perWord}s of data. These two checks show how far to
+                    trust it.
+                  </p>
+                </div>
+              )}
+
               {cur === "years" && (
                 <div className="card-split">
                   <div className="card-text">
@@ -320,7 +456,7 @@ export default function Explorer({ view, card, onCard, panelOpen, onPanel, onCha
                       <Term id="p_value" onTerm={onTerm}>
                         p-value
                       </Term>{" "}
-                      as we add years, counting back from the latest one. Below the dashed line means{" "}
+                      for the latest 15 {view.perWord}s, then 16, and so on up to the full record. Below the dashed line means{" "}
                       <Term id="significant" onTerm={onTerm}>
                         significant
                       </Term>
@@ -371,18 +507,18 @@ export default function Explorer({ view, card, onCard, panelOpen, onPanel, onCha
           </div>
         </section>
 
-        {!view.isTemp && (
+        {view.where && (
           <section aria-labelledby="where-title" className="panel where">
             <div className="stack-2">
               <h2 id="where-title" className="h3">
                 Where is it changing?
               </h2>
-              <p className="small muted">{view.whereIntro}</p>
+              <p className="small muted">{view.where.intro}</p>
             </div>
             <RegionMap fills={view.mapFills} labels={view.mapLabels} selected={view.region.id} onPick={(id) => onChange({ region: id })} />
             <div className="stack-2">
-              {view.regionRows.map((r) => {
-                const w = Math.min(50, (Math.abs(r.percent) / 25) * 50);
+              {view.where.rows.map((r) => {
+                const w = Math.min(50, (Math.abs(r.amount) / view.where!.scale) * 50);
                 return (
                   <button
                     key={r.id}
@@ -397,9 +533,9 @@ export default function Explorer({ view, card, onCard, panelOpen, onPanel, onCha
                       <span
                         className="bar-fill"
                         style={{
-                          left: r.percent < 0 ? `${50 - w}%` : "50%",
+                          left: r.amount < 0 ? `${50 - w}%` : "50%",
                           width: `${w}%`,
-                          background: r.percent < 0 ? "var(--dry-strong)" : "var(--wet-strong)",
+                          background: r.amount < 0 ? "var(--dry-strong)" : "var(--wet-strong)",
                         }}
                       />
                     </span>
@@ -411,7 +547,7 @@ export default function Explorer({ view, card, onCard, panelOpen, onPanel, onCha
                 );
               })}
             </div>
-            <span className="tiny muted">Change per decade, NASA GPM IMERG. Bars to the left are drier, to the right wetter.</span>
+            <span className="tiny muted">{view.where.caption}</span>
           </section>
         )}
       </div>

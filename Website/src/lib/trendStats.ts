@@ -14,7 +14,16 @@ export interface WindowResult {
   pValue: number;
   tau: number;
   status: TrendStatus;
+  /** The line to draw: Sen's slope through the middle of the points. */
   line: { slope: number; intercept: number };
+  /** 95% confidence range of Sen's slope, per decade. */
+  rangePerDecade: [number, number];
+  /** How strongly one year follows the year before (lag-1 autocorrelation of the detrended values). */
+  lag1: number;
+  /** True when that link is too strong to be chance. */
+  dependent: boolean;
+  /** p-value after allowing for that link. Equal to pValue when the link is weak. */
+  pAdjusted: number;
   shortPeriodWarning: boolean;
 }
 
@@ -46,21 +55,76 @@ export function mannKendall(values: number[]) {
   const p = 2 * (1 - normCdf(Math.abs(z)));
   const tau = s / (0.5 * n * (n - 1));
   const trend = p < 0.05 ? (z > 0 ? "increasing" : "decreasing") : "no trend";
-  return { s, tau, z, p, trend };
+  return { s, tau, z, p, trend, varS };
 }
 
-/** Sen's slope (median of pairwise slopes), per unit of x (per year). */
-export function sensSlope(x: number[], y: number[]): number {
+function median(sorted: number[]): number {
+  const m = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[m] : (sorted[m - 1] + sorted[m]) / 2;
+}
+
+function pairSlopes(x: number[], y: number[]): number[] {
   const slopes: number[] = [];
   for (let i = 0; i < y.length - 1; i++)
     for (let j = i + 1; j < y.length; j++)
       if (x[j] !== x[i]) slopes.push((y[j] - y[i]) / (x[j] - x[i]));
-  slopes.sort((a, b) => a - b);
-  const m = Math.floor(slopes.length / 2);
-  return slopes.length % 2 ? slopes[m] : (slopes[m - 1] + slopes[m]) / 2;
+  return slopes.sort((a, b) => a - b);
 }
 
-/** Ordinary least-squares line, for drawing the trend line only. */
+/** Sen's slope (median of pairwise slopes), per unit of x (per year). */
+export function sensSlope(x: number[], y: number[]): number {
+  return median(pairSlopes(x, y));
+}
+
+/**
+ * 95% confidence range of Sen's slope (Sen 1968; Gilbert 1987), per unit of x.
+ * varS is the variance of the Mann-Kendall S statistic for the same values.
+ */
+export function sensSlopeRange(x: number[], y: number[], varS: number): [number, number] {
+  const slopes = pairSlopes(x, y);
+  const n = slopes.length;
+  const c = 1.959964 * Math.sqrt(varS);
+  const lo = Math.max(0, Math.min(n - 1, Math.round((n - c) / 2) - 1));
+  const hi = Math.max(0, Math.min(n - 1, Math.round((n + c) / 2)));
+  return [slopes[lo], slopes[hi]];
+}
+
+/** Sen's line: Sen's slope, placed through the middle of the points. */
+export function sensLine(x: number[], y: number[]) {
+  const slope = sensSlope(x, y);
+  const intercept = median(y.map((v, i) => v - slope * x[i]).sort((a, b) => a - b));
+  return { slope, intercept };
+}
+
+/**
+ * Check whether one year depends on the year before, which makes the
+ * Mann-Kendall test too confident. Uses the lag-1 autocorrelation of the
+ * detrended values and, when it is positive and too strong to be chance,
+ * widens the variance of S (Yue & Wang 2004) and recalculates p.
+ */
+export function dependenceCheck(x: number[], y: number[]) {
+  const mk = mannKendall(y);
+  const line = sensLine(x, y);
+  const res = y.map((v, i) => v - (line.slope * x[i] + line.intercept));
+  const n = res.length;
+  const mean = res.reduce((a, b) => a + b, 0) / n;
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < n; i++) {
+    den += (res[i] - mean) ** 2;
+    if (i < n - 1) num += (res[i] - mean) * (res[i + 1] - mean);
+  }
+  const lag1 = den === 0 ? 0 : num / den;
+  const dependent = lag1 > 1.96 / Math.sqrt(n);
+  if (!dependent) return { lag1, dependent, pAdjusted: mk.p };
+  let factor = 1;
+  for (let k = 1; k < n; k++) factor += 2 * (1 - k / n) * lag1 ** k;
+  const sd = Math.sqrt(mk.varS * factor);
+  const z = mk.s > 0 ? (mk.s - 1) / sd : mk.s < 0 ? (mk.s + 1) / sd : 0;
+  return { lag1, dependent, pAdjusted: 2 * (1 - normCdf(Math.abs(z))) };
+}
+
+/** Ordinary least-squares line (kept for comparison; the app draws Sen's line). */
 export function linearFit(x: number[], y: number[]) {
   const n = x.length;
   const mx = x.reduce((a, b) => a + b, 0) / n;
@@ -96,7 +160,10 @@ export function analyzeWindow(
   const x = idx.map((i) => years[i]);
   const y = idx.map((i) => values[i]);
   const mk = mannKendall(y);
-  const sen = sensSlope(x, y);
+  const line = sensLine(x, y);
+  const sen = line.slope;
+  const range = sensSlopeRange(x, y, mk.varS);
+  const dep = dependenceCheck(x, y);
   const mean = y.reduce((a, b) => a + b, 0) / y.length;
   return {
     startYear: x[0],
@@ -107,7 +174,11 @@ export function analyzeWindow(
     pValue: mk.p,
     tau: mk.tau,
     status: statusFor(mk.p),
-    line: linearFit(x, y),
+    line,
+    rangePerDecade: [range[0] * 10, range[1] * 10],
+    lag1: dep.lag1,
+    dependent: dep.dependent,
+    pAdjusted: dep.pAdjusted,
     shortPeriodWarning: y.length < 20,
   };
 }

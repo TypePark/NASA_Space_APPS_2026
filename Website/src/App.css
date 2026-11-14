@@ -563,3 +563,59 @@ a { color: var(--accent-ink); }
 
 .team-list { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
 .team-list li { padding: 6px 14px; border-radius: 999px; background: var(--surface-2); font-size: 15px; font-weight: 600; }
+
+.glossary-item dd.glossary-more { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--ink); line-height: 1.6; }
+
+/* ---------- adjust: detailed view ---------- */
+.adjust-head { gap: 10px; }
+.view-switch { min-height: 40px; }
+.choice-variable { gap: 12px; padding: 12px 14px; border-radius: 16px; }
+.choice-variable[aria-checked="true"] .round-icon { background: var(--accent); color: var(--on-accent); }
+.month-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.month { justify-content: center; padding: 0 4px; }
+.caution {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  max-width: 760px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--ns-bg);
+  color: var(--ns-fg);
+}
+.caution .icon { margin-top: 2px; }
+@media (max-width: 480px) {
+  .month-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.adjust-head > .row { flex: none; flex-wrap: nowrap; }
+
+/* ---------- charts: reading values ---------- */
+.chart-hover { cursor: crosshair; touch-action: pan-y; border-radius: 12px; }
+
+/* ---------- the maths ---------- */
+.formulas { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 28px 32px; }
+.formula-step { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.formula-step h3 { font-size: 17px; }
+.formula {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  line-height: 1.4;
+  overflow-x: auto;
+}
+.formula-line { white-space: nowrap; }
+.formula i { font-style: italic; }
+.frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 3px; font-size: 0.92em; }
+.frac > span:first-child { padding: 0 4px 2px; border-bottom: 1px solid currentColor; }
+.frac > span:last-child { padding: 2px 4px 0; }
+.sum { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 2px; }
+.sum-sign { font-size: 1.5em; line-height: 1; }
+.sum-over { font-size: 0.62em; line-height: 1.2; white-space: nowrap; }
+.brace::before { content: "{ "; font-size: 1.3em; }
+.brace::after { content: " }"; font-size: 1.3em; }

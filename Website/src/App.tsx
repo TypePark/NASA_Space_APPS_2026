@@ -6,7 +6,7 @@ import type { NavKey } from "./components/TopBar";
 import { CASES } from "./content";
 import type { CaseId } from "./content";
 import type { RegionId } from "./data/records";
-import { DEFAULT_SETTINGS, buildView, settingsForCase } from "./model";
+import { DEFAULT_SETTINGS, buildView, normalise, settingsForCase } from "./model";
 import type { Settings } from "./model";
 import CaseFile from "./screens/CaseFile";
 import Explorer from "./screens/Explorer";
@@ -69,11 +69,13 @@ export default function App() {
     setDemo(null);
     setSettings((s) => {
       const next = { ...s, ...patch };
+      // Picking a ready-made question replaces a custom choice of months.
+      if (patch.variable && patch.custom === undefined) next.custom = null;
       // A new question, place or record starts from the full record again.
-      if (patch.periodMode === undefined && (patch.variable || patch.region || patch.dataset)) next.periodMode = "full";
-      return next;
+      if (patch.periodMode === undefined && (patch.variable || patch.custom || patch.region || patch.dataset)) next.periodMode = "full";
+      return normalise(next);
     });
-    if (patch.variable || patch.region || patch.dataset || patch.periodMode === "explore") setCard(0);
+    if (patch.variable || patch.custom || patch.region || patch.dataset || patch.periodMode === "explore") setCard(0);
   }, []);
 
   const startDemo = useCallback(

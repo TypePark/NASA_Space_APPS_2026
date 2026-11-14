@@ -1,4 +1,5 @@
 import logo from "../assets/logo.svg";
+import Formulas from "../components/Formulas";
 import Icon from "../components/Icon";
 import { DATASETS, DEM_LICENSE, LIMITS, METHOD_STEPS, REFERENCES, STUDY_AREA, TEAM } from "../content";
 import { allResultRows } from "../model";
@@ -78,6 +79,16 @@ export default function Method() {
         </div>
       </section>
 
+      <section aria-labelledby="m-maths" className="stack-14">
+        <h2 id="m-maths" className="h2">
+          The maths
+        </h2>
+        <p className="small muted">
+          The formulas behind every number on this site.
+        </p>
+        <Formulas />
+      </section>
+
       <section aria-labelledby="m-results" className="stack-14">
         <h2 id="m-results" className="h2">
           All results
@@ -93,6 +104,9 @@ export default function Method() {
                   Change per decade
                 </th>
                 <th scope="col" className="right">
+                  Likely range
+                </th>
+                <th scope="col" className="right">
                   p-value
                 </th>
                 <th scope="col">Result</th>
@@ -105,6 +119,7 @@ export default function Method() {
                   <td>{r.measure}</td>
                   <td className="muted">{r.record}</td>
                   <td className="num right">{r.trend}</td>
+                  <td className="num right muted">{r.range}</td>
                   <td className="num right">{r.p}</td>
                   <td>
                     <span className={`badge badge-sm badge-${r.badge.status}`}>

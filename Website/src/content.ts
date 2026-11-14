@@ -31,13 +31,33 @@ export const ICON = {
 
 export type IconName = keyof typeof ICON;
 
+/** One of the five ready-made questions: a variable plus the months to use. */
 export interface VariableDef {
-  id: VariableId;
-  kind: "rain" | "temp";
+  id: string;
+  /** Variable key in the data, e.g. "rainfall". */
+  base: string;
+  /** Months 1–12. */
+  months: number[];
+  /** Name of the measure, e.g. "Annual rainfall". */
+  label: string;
   q: string;
   def: string;
   icon: IconName;
   short: string;
+}
+
+/** A variable the user can choose in the detailed view. */
+export interface BaseVariable {
+  id: string;
+  group: string;
+  name: string;
+  /** Used in sentences: "March rainfall". */
+  noun: string;
+  def: string;
+  icon: IconName;
+  /** Words for a falling and a rising value across places. */
+  down: string;
+  up: string;
 }
 
 export interface RegionDef {
@@ -48,7 +68,7 @@ export interface RegionDef {
 
 export type CaseId = "A" | "B";
 export type DemoTarget = "case" | "headline" | "chart" | "numbers" | "deck";
-export type CardId = "series" | "years" | "rhythm" | "second";
+export type CardId = "series" | "sure" | "years" | "rhythm" | "second";
 
 export interface CaseDef {
   label: string;
@@ -61,17 +81,48 @@ export interface CaseDef {
 export interface GlossaryEntry {
   id: string;
   term: string;
+  /** The short answer. */
   text: string;
+  /** How it works, for readers who want the real meaning. */
+  more: string;
 }
 
 /** The five questions users can ask. */
+const YEAR = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const WET = [10, 11, 12, 1, 2, 3];
+const DRY = [4, 5, 6, 7, 8, 9];
+const SUMMER = [6, 7, 8];
+
 export const VARS: VariableDef[] = [
-  { id: 'annual_total', kind: 'rain', q: 'Is it getting drier overall?', def: 'Yearly rainfall: all the rain in a year, added up.', icon: 'drop', short: 'Yearly rainfall' },
-  { id: 'wet_season_total', kind: 'rain', q: 'Is the rainy season changing?', def: 'Rain from October to March, the months that refill reservoirs.', icon: 'rain', short: 'Wet-season rainfall' },
-  { id: 'dry_season_total', kind: 'rain', q: 'Is spring and summer rain changing?', def: 'Rain from April to September, small amounts that matter for crops.', icon: 'sun', short: 'Dry-season rainfall' },
-  { id: 'annual_mean_temperature', kind: 'temp', q: 'Is it getting hotter?', def: 'The average air temperature over a whole year.', icon: 'thermo', short: 'Average temperature' },
-  { id: 'summer_mean_temperature', kind: 'temp', q: 'Are summers getting hotter?', def: 'The average air temperature in June, July and August.', icon: 'sun', short: 'Summer temperature' }
+  { id: "annual_total", base: "rainfall", months: YEAR, label: "Annual rainfall", q: "Is it getting drier overall?", def: "Yearly rainfall: all the rain in a year, added up.", icon: "drop", short: "Yearly rainfall" },
+  { id: "wet_season_total", base: "rainfall", months: WET, label: "Wet-season rainfall (Oct–Mar)", q: "Is the rainy season changing?", def: "Rain from October to March, the months that refill reservoirs.", icon: "rain", short: "Wet-season rainfall" },
+  { id: "dry_season_total", base: "rainfall", months: DRY, label: "Dry-season rainfall (Apr–Sep)", q: "Is spring and summer rain changing?", def: "Rain from April to September, small amounts that matter for crops.", icon: "sun", short: "Dry-season rainfall" },
+  { id: "annual_mean_temperature", base: "temperature", months: YEAR, label: "Average air temperature", q: "Is it getting hotter?", def: "The average air temperature over a whole year.", icon: "thermo", short: "Average temperature" },
+  { id: "summer_mean_temperature", base: "temperature", months: SUMMER, label: "Summer air temperature (Jun–Aug)", q: "Are summers getting hotter?", def: "The average air temperature in June, July and August.", icon: "sun", short: "Summer temperature" },
 ];
+
+/** The variables offered in the detailed view. Add an entry here when new data is added. */
+export const BASE_VARS: BaseVariable[] = [
+  { id: "rainfall", group: "Water", name: "Rainfall", noun: "rainfall", def: "How much rain falls, added up over the months you choose.", icon: "drop", down: "drier", up: "wetter" },
+  { id: "temperature", group: "Heat", name: "Air temperature", noun: "air temperature", def: "How warm the air is 2 metres above the ground, averaged over the months you choose.", icon: "thermo", down: "cooler", up: "warmer" },
+];
+
+/** Quick choices of months in the detailed view. */
+export const MONTH_SETS: { id: string; label: string; months: number[] }[] = [
+  { id: "year", label: "Whole year", months: YEAR },
+  { id: "wet", label: "Wet season · Oct–Mar", months: WET },
+  { id: "dry", label: "Dry season · Apr–Sep", months: DRY },
+  { id: "summer", label: "Summer · Jun–Aug", months: SUMMER },
+];
+
+export const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** What each NASA record is, in a few words. */
+export const DATASET_ROLE: Record<string, string> = {
+  imerg: "Satellite record",
+  merra2: "Long model record",
+};
 
 /** The six places, with a one-line reason to look at each. */
 export const REGIONS: RegionDef[] = [
@@ -88,7 +139,7 @@ export const CASES: Record<CaseId, CaseDef> = {
   A: { label: 'Case 1 · Is Cyprus getting drier?', region: 'cyprus_whole', variable: 'annual_total', dataset: 'imerg', steps: [
     { target: 'chart', card: 'series', text: 'Each dot is one year of rainfall from NASA’s GPM satellites. The totals swing wildly: about 275 mm in 2008, almost 790 mm in 2012.' },
     { target: 'numbers', card: 'series', text: 'The trend is slightly down, about −7 mm per decade. But the p-value is 0.77, far above 0.05: not significant.' },
-    { target: 'deck', card: 'years', text: 'Would more years help? A steady trend gets closer to significant as years are added. This one doesn’t.' },
+    { target: 'deck', card: 'years', text: 'Does a longer record change the answer? A steady trend gets closer to significant as years are added. This one doesn’t.' },
     { target: 'deck', card: 'second', text: 'A second NASA record going back to 1980 agrees: no significant trend. That doesn’t mean nothing is changing, only that it isn’t proven.' } ] },
   B: { label: 'Case 2 · Is Cyprus getting hotter?', region: 'cyprus_whole', variable: 'annual_mean_temperature', dataset: 'merra2', steps: [
     { target: 'case', card: 'series', text: 'Now temperature. The settings are filled in for us: average temperature, whole island, NASA’s MERRA-2 record from 1980.' },
@@ -98,18 +149,108 @@ export const CASES: Record<CaseId, CaseDef> = {
 };
 
 export const GLOSSARY: GlossaryEntry[] = [
-  { id: 'rainfall', term: 'Rainfall (mm)', text: 'How deep the rain would be if it all stayed where it fell. 10 mm of rain on one square metre is 10 litres of water.' },
-  { id: 'temperature', term: 'Air temperature (°C)', text: 'How warm the air is 2 metres above the ground, averaged over the island.' },
-  { id: 'trend', term: 'Trend', text: 'A steady change in one direction over many years, such as rising temperature.' },
-  { id: 'sens_slope', term: 'Sen’s slope', text: 'How fast something changes. We take the slope between every pair of years and use the middle value, so one extreme year can’t pull the answer around.' },
-  { id: 'mann_kendall', term: 'Mann-Kendall test', text: 'A standard test for trends. It checks whether values go up or down over the years more often than chance would explain, and gives the p-value.' },
-  { id: 'p_value', term: 'p-value', text: 'How likely it is to see a trend this strong by chance if nothing were really changing. Smaller means stronger evidence.' },
-  { id: 'significant', term: 'Significant', text: 'The p-value is below 0.05, so the trend meets the scientific standard for significance.' },
-  { id: 'not_significant', term: 'Not significant', text: 'The p-value is 0.05 or more, so the trend does not meet the standard. That doesn’t mean there is no trend, or that it isn’t important: sometimes a longer record is all that’s needed.' },
-  { id: 'variability', term: 'Year-to-year variability', text: 'How much a value usually swings from one year to the next. Big swings can hide a slow trend.' },
-  { id: 'wet_season', term: 'Wet and dry seasons', text: 'In Cyprus most rain falls from October to March (wet season). April to September is the dry season.' },
-  { id: 'seasonal_cycle', term: 'Seasonal cycle', text: 'The regular pattern every year: wet, mild winters and dry, hot summers. We add up whole years or seasons so this rhythm doesn’t hide a trend.' },
-  { id: 'records', term: 'Satellite record vs model record', text: 'GPM IMERG measures rain from satellites since 1998, in detail. MERRA-2 is a NASA model that combines many observations back to 1980, in less detail.' }
+  {
+    id: "rainfall",
+    term: "Rainfall (mm)",
+    text: "How deep the rain would be if it all stayed where it fell. 10 mm of rain on one square metre is 10 litres of water.",
+    more: "We show totals: all the rain in a year or a season, averaged over an area. Satellites estimate rain from above and do not collect it in a gauge, so the amounts are too low over mountains. How rainfall changes over time is more reliable than the exact amount.",
+  },
+  {
+    id: "temperature",
+    term: "Air temperature (°C)",
+    text: "How warm the air is 2 metres above the ground, averaged over the island.",
+    more: "It comes from NASA’s MERRA-2 model, whose grid is too coarse to separate the five areas, so we show the whole island only. A yearly value is the average of the twelve months. A summer value is the average of June, July and August.",
+  },
+  {
+    id: "area_average",
+    term: "Area average",
+    text: "One value for a whole area: the average of every grid cell inside it.",
+    more: "The whole island uses the outline of Cyprus. The five areas are rectangles drawn around each place, so the coastal ones include some sea. Averaging hides differences inside an area, such as a wet mountain next to a dry plain.",
+  },
+  {
+    id: "trend",
+    term: "Trend",
+    text: "A steady change in one direction over many years, such as rising temperature.",
+    more: "We look for values that tend to go up, or tend to go down, across the whole record. It does not have to be a perfect straight line. A few unusual years are not a trend, and a trend in the past is not a forecast of the future.",
+  },
+  {
+    id: "sens_slope",
+    term: "Sen’s slope",
+    text: "How fast something changes. We take the slope between every pair of years and use the middle value, so one extreme year can’t pull the answer around.",
+    more: "Example: 27 years make 351 pairs of years. For each pair we divide the change in value by the number of years between them. We sort those 351 slopes and take the middle one. Multiplied by 10, it is the change per decade. An ordinary straight-line fit can be dragged up or down by one very wet or very dry year; the middle value cannot. Named after the statistician Pranab Kumar Sen (1968).",
+  },
+  {
+    id: "percent_per_decade",
+    term: "Percent per decade",
+    text: "The change per decade divided by that place’s average. It lets us compare wet places with dry ones.",
+    more: "A loss of 15 mm per decade is small where 500 mm falls in a year, and large where only 75 mm falls in a season. Be careful with big percentages of small amounts: dry-season rain is a small part of the year’s total.",
+  },
+  {
+    id: "trend_line",
+    term: "Trend line on the chart",
+    text: "A straight line through the yearly values, drawn to guide the eye.",
+    more: "The line uses Sen’s slope, the same rate of change shown in the numbers, and is placed so that half the points lie above it and half below.",
+  },
+  {
+    id: "range",
+    term: "Likely range",
+    text: "The rate of change is an estimate. The likely range shows how far the true rate could reasonably be from it.",
+    more: "It is a 95% confidence range for Sen’s slope: if we could repeat the measurement many times, about 95 in 100 such ranges would contain the true rate. A narrow range means the data pin the rate down well. If the range includes zero, the data cannot tell a rise from a fall.",
+  },
+  {
+    id: "dependence",
+    term: "Year-to-year dependence",
+    text: "When a warm or wet year tends to be followed by another one. It can make a trend look more certain than it is.",
+    more: "The Mann-Kendall test assumes each year is independent of the year before. We check this by removing the trend and measuring how closely each year follows the last (the lag-1 autocorrelation). If the link is too strong to be chance, we recalculate the p-value with a wider margin and show both.",
+  },
+  {
+    id: "mann_kendall",
+    term: "Mann-Kendall test",
+    text: "A standard test for trends. It checks whether values go up or down over the years more often than chance would explain, and gives the p-value.",
+    more: "It compares every year with every later year and counts how often the value went up and how often it went down. If nothing is changing, ups and downs roughly cancel. A large surplus of one over the other is unlikely to happen by chance, and the test turns the size of that surplus into a p-value. It uses only the order of the values, not their size, so extreme years do not distort it. It assumes that one year does not depend strongly on the year before.",
+  },
+  {
+    id: "p_value",
+    term: "p-value",
+    text: "How likely it is to see a trend this strong by chance if nothing were really changing. Smaller means stronger evidence.",
+    more: "It is a number between 0 and 1. A p-value of 0.03 means: if there were no real trend, the usual swings from year to year would produce a trend at least this strong about 3 times in 100. It is not the chance that the trend is real, and it says nothing about how big the change is. A small change can have a tiny p-value when the data are steady. A big change can have a large p-value when the data swing a lot.",
+  },
+  {
+    id: "significant",
+    term: "Significant",
+    text: "The p-value is below 0.05, so the trend meets the scientific standard for significance.",
+    more: "The 0.05 line is a convention: we accept a 1 in 20 risk of calling a trend real when it is only chance. Significant does not mean large or important. It means unlikely to be an accident. This tool tests many places and seasons, and when many tests are run a few can pass by luck, so treat a result just below 0.05 with care.",
+  },
+  {
+    id: "not_significant",
+    term: "Not significant",
+    text: "The p-value is 0.05 or more, so the trend does not meet the standard. That doesn’t mean there is no trend, or that it isn’t important: sometimes a longer record is all that’s needed.",
+    more: "There are three possible reasons: nothing is changing; something is changing, but slowly compared with the swings from year to year; or the record is too short to tell. The “Does a longer record change the answer?” card shows what happens as the record gets longer.",
+  },
+  {
+    id: "variability",
+    term: "Year-to-year variability",
+    text: "How much a value usually swings from one year to the next. Big swings can hide a slow trend.",
+    more: "Yearly rainfall in Cyprus swings by roughly a quarter to 40% of the average. Yearly temperature swings by only a few tenths of a degree. This is why warming shows up clearly, while a rainfall change of a few percent per decade is hard to prove.",
+  },
+  {
+    id: "wet_season",
+    term: "Wet and dry seasons",
+    text: "In Cyprus most rain falls from October to March (wet season). April to September is the dry season.",
+    more: "A wet season runs across the New Year, so it is labelled with both years: 1998/99 is October 1998 to March 1999. We only count complete seasons. Wet-season rain refills reservoirs and groundwater. Dry-season rain is small, but it matters for crops and fire risk.",
+  },
+  {
+    id: "seasonal_cycle",
+    term: "Seasonal cycle",
+    text: "The regular pattern every year: wet, mild winters and dry, hot summers. We add up whole years or seasons so this rhythm doesn’t hide a trend.",
+    more: "If we tested the monthly values directly, the large difference between winter and summer would drown out any slow change. Adding up a whole year, or comparing the same season in each year, removes it.",
+  },
+  {
+    id: "records",
+    term: "Satellite record vs model record",
+    text: "GPM IMERG measures rain from satellites since 1998, in detail. MERRA-2 is a NASA model that combines many observations back to 1980, in less detail.",
+    more: "IMERG has a grid of about 10 km, fine enough to separate the five areas. MERRA-2 has a grid of about 50 km, so we use it for the whole island only. A model record is consistent over a long time, but it is not a direct measurement. When both records give the same answer, as on the “Second opinion” card, we can trust it more.",
+  },
 ];
 
 export const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
@@ -128,9 +269,11 @@ export const DATASETS = [
 
 export const METHOD_STEPS = [
   { title: "1 · Add up whole years and seasons", text: "Monthly values become yearly totals, wet-season totals (Oct–Mar) and dry-season totals (Apr–Sep), or yearly averages for temperature. This removes the regular seasonal cycle." },
-  { title: "2 · Measure the rate of change", text: "Sen’s slope: the middle value of the slopes between every pair of years. Robust to single extreme years. The straight line on the chart is a simple linear fit, for drawing only." },
+  { title: "2 · Measure the rate of change", text: "Sen’s slope: the middle value of the slopes between every pair of years, so one extreme year cannot distort it. The line on the chart uses the same slope. We also give its likely range (95% confidence)." },
   { title: "3 · Test whether it’s real", text: "The Mann-Kendall test asks whether values go up or down more often than chance allows. Below p = 0.05 we call the trend significant." },
   { title: "4 · Apply the standard", text: "p below 0.05 is a significant trend. p of 0.05 or more does not meet the standard, which doesn’t mean there is no trend: a longer record may be needed." },
+  { title: "5 · Check the assumptions", text: "The test assumes each year is independent. We measure how closely one year follows the last and, where the link is strong, recalculate the p-value with a wider margin (Yue & Wang, 2004)." },
+  { title: "6 · Be careful with many tests", text: "Every combination of place, months and years is a new test. About 1 in 20 passes by chance, so a result just below 0.05 is weak evidence on its own." },
 ];
 
 export const LIMITS = [
