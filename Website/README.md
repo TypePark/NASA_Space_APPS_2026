@@ -51,7 +51,7 @@ The Adjust card in the Explorer has two views. The simple view offers the ready-
 
 ## Guided tour
 
-"Guided tour" in the menu walks a visitor through the Explorer, the case file and Data & Method in 16 steps. Some steps ask the visitor to do something (open a card, pick a place, choose months) and explain the result once it is done. Every number the tour quotes is read from the current result.
+"Guided tour" in the menu walks a visitor through the Explorer, the case file, the 3D map and Data & Method in 17 steps. Some steps ask the visitor to do something (open a card, pick a place, choose months) and explain the result once it is done. Every number the tour quotes is read from the current result.
 
 ## Facts in the wording
 

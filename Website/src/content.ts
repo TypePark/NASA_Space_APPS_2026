@@ -25,6 +25,9 @@ export const ICON = {
   trend: 'M3 17l6-6 4 4 8-8M15 7h6v6',
   minus: 'M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0ZM8 12h8',
   sliders: 'M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4',
+  sound: 'M4 10v4h3l5 4V6L7 10H4ZM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11',
+  mute: 'M4 10v4h3l5 4V6L7 10H4ZM16.5 9.5l5 5M21.5 9.5l-5 5',
+  pause: 'M8 5v14M16 5v14',
   down: 'M3 7l6 6 4-4 8 8M15 17h6v-6',
   flat: 'M4 12h16M15 7l5 5-5 5'
 } as const;

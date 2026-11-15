@@ -14,7 +14,7 @@ export interface TourStep {
   /** Which part of the Explorer to highlight. */
   target?: TourTarget;
   /** Screen shown when the step opens. Defaults to the Explorer. */
-  screen?: "explore" | "case" | "method";
+  screen?: "explore" | "case" | "method" | "map3d";
   /** Settings applied when the step opens, so every step starts from a known place. */
   settings: Partial<Settings>;
   /** Card shown when the step opens. */
@@ -188,6 +188,13 @@ export const TOUR: TourStep[] = [
       done: ({ screen }) => screen === "case",
       after: () => "The case file answers the questions of the challenge in plain words: what is changing, where, how much, and whether it is significant.",
     },
+  },
+  {
+    part: PART_3,
+    screen: "map3d",
+    settings: SUMMER_HEAT,
+    text: () =>
+      "This is Cyprus in 3D: the shape of the land, with the average yearly rainfall from NASA GPM IMERG laid over it. Drag to turn the map and scroll to zoom. The panel on the map switches its layers on and off.",
   },
   {
     part: PART_3,

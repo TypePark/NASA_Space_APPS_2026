@@ -310,7 +310,7 @@ export function buildView(s: Settings): View {
   if (rec.significant && rec.dependent && rec.p_adjusted >= 0.05)
     cautions.push(`Allowing for years that depend on each other, the p-value rises to ${pShow(rec.p_adjusted)}, which is not significant.`);
   if (vdef.id === "custom" && vdef.months.length < 12)
-    cautions.push("You picked these months yourself. If you keep trying different months until one shows “Significant”, that result is probably luck: about 1 try in 20 passes even when nothing is changing.");
+    cautions.push("You picked these months yourself. If you keep trying different months until one shows “Significant”, a result that only just passes is probably luck: about 1 try in 20 passes even when nothing is changing.");
 
   // chosen period, recalculated in the browser
   const window = explore ? analyzeWindow(years, rec.values, startYear, endYear, MIN_YEARS) : null;

@@ -2,18 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import Icon from "../components/Icon";
 import RegionMap from "../components/RegionMap";
 import { MoreYearsChart, RhythmChart, SeriesChart } from "../components/charts";
-import {
-  BASE_VARS,
-  MONTHS_LONG,
-  MONTHS_SHORT,
-  MONTH_SETS,
-  VARS,
-} from "../content";
+import { BASE_VARS, MONTHS_LONG, MONTHS_SHORT, MONTH_SETS, VARS } from "../content";
 import type { TourTarget } from "../content";
 import type { VariableId } from "../data/records";
 import { SERIES, yearsOf } from "../data/series";
 import { MIN_YEARS, monthsText } from "../model";
 import type { Settings, View } from "../model";
+
 
 interface ExplorerProps {
   view: View;
@@ -29,15 +24,7 @@ interface ExplorerProps {
   tourStep: number | null;
 }
 
-function Pill({
-  on,
-  onClick,
-  children,
-}: {
-  on: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
+function Pill({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button type="button" className="pill" aria-pressed={on} onClick={onClick}>
       {children}
@@ -45,15 +32,7 @@ function Pill({
   );
 }
 
-function Term({
-  id,
-  onTerm,
-  children,
-}: {
-  id: string;
-  onTerm: (id: string) => void;
-  children: React.ReactNode;
-}) {
+function Term({ id, onTerm, children }: { id: string; onTerm: (id: string) => void; children: React.ReactNode }) {
   return (
     <button type="button" className="term" onClick={() => onTerm(id)}>
       {children}
@@ -72,27 +51,12 @@ function coverage(variable: string): string {
     if (s.variable !== variable) continue;
     const [a, b] = yearsOf(s);
     const cur = seen.get(s.dataset_name);
-    seen.set(
-      s.dataset_name,
-      cur ? [Math.min(a, cur[0]), Math.max(b, cur[1])] : [a, b],
-    );
+    seen.set(s.dataset_name, cur ? [Math.min(a, cur[0]), Math.max(b, cur[1])] : [a, b]);
   }
-  return [...seen]
-    .map(([name, [a, b]]) => `NASA ${name} ${a}–${b}`)
-    .join(" · ");
+  return [...seen].map(([name, [a, b]]) => `NASA ${name} ${a}–${b}`).join(" · ");
 }
 
-export default function Explorer({
-  view,
-  card,
-  onCard,
-  panelOpen,
-  onPanel,
-  onChange,
-  onTerm,
-  highlight,
-  tourStep,
-}: ExplorerProps) {
+export default function Explorer({ view, card, onCard, panelOpen, onPanel, onChange, onTerm, highlight, tourStep }: ExplorerProps) {
   const { rec, cards } = view;
   const cardIdx = Math.max(0, Math.min(cards.length - 1, card));
   const cur = cards[cardIdx].id;
@@ -101,14 +65,8 @@ export default function Explorer({
   const months = view.vdef.months;
   const toggleMonth = (m: number) => {
     // From a whole year, tapping a month means "only this month". Otherwise it adds or removes the month.
-    const next =
-      months.length === 12
-        ? [m]
-        : months.includes(m)
-          ? months.filter((x) => x !== m)
-          : [...months, m].sort((a, b) => a - b);
-    if (next.length)
-      onChange({ custom: { variable: view.base.id, months: next } });
+    const next = months.length === 12 ? [m] : months.includes(m) ? months.filter((x) => x !== m) : [...months, m].sort((a, b) => a - b);
+    if (next.length) onChange({ custom: { variable: view.base.id, months: next } });
   };
   const hl = (t: TourTarget) => (highlight === t ? " is-hl" : "");
   const deckHl = hl("deck");
@@ -117,9 +75,7 @@ export default function Explorer({
   const page = useRef<HTMLElement>(null);
   useEffect(() => {
     if (tourStep === null) return;
-    page.current
-      ?.querySelector(".is-hl")
-      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    page.current?.querySelector(".is-hl")?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [tourStep, highlight]);
 
   useEffect(() => {
@@ -138,8 +94,7 @@ export default function Explorer({
       label: "From",
       value: sY,
       down: () => onChange({ startYear: Math.max(x0, sY - 1), endYear: eY }),
-      up: () =>
-        onChange({ startYear: Math.min(eY - span, sY + 1), endYear: eY }),
+      up: () => onChange({ startYear: Math.min(eY - span, sY + 1), endYear: eY }),
       canDown: sY > x0,
       canUp: sY < eY - span,
       downLabel: "Start one year earlier",
@@ -148,8 +103,7 @@ export default function Explorer({
     {
       label: "To",
       value: eY,
-      down: () =>
-        onChange({ startYear: sY, endYear: Math.max(sY + span, eY - 1) }),
+      down: () => onChange({ startYear: sY, endYear: Math.max(sY + span, eY - 1) }),
       up: () => onChange({ startYear: sY, endYear: Math.min(x1, eY + 1) }),
       canDown: eY > sY + span,
       canUp: eY < x1,
@@ -163,21 +117,12 @@ export default function Explorer({
       {/* floating settings */}
       <div className="adjust">
         <div className="adjust-anchor">
-          <button
-            type="button"
-            className={"btn btn-primary adjust-btn" + hl("adjust")}
-            aria-expanded={panelOpen}
-            onClick={() => onPanel(!panelOpen)}
-          >
+          <button type="button" className={"btn btn-primary adjust-btn" + hl("adjust")} aria-expanded={panelOpen} onClick={() => onPanel(!panelOpen)}>
             <Icon name="sliders" strokeWidth={1.9} />
             Adjust
           </button>
           {panelOpen && (
-            <div
-              className="adjust-panel"
-              role="dialog"
-              aria-label="Adjust what you see"
-            >
+            <div className="adjust-panel" role="dialog" aria-label="Adjust what you see">
               <div className="adjust-head">
                 <span className="strong">Adjust what you see</span>
                 <div className="row row-tight row-center">
@@ -187,19 +132,10 @@ export default function Explorer({
                     aria-pressed={detailed}
                     onClick={() => setDetailed(!detailed)}
                   >
-                    <Icon
-                      name={detailed ? "check" : "layers"}
-                      size={16}
-                      className="accent-ink"
-                    />
+                    <Icon name={detailed ? "check" : "layers"} size={16} className="accent-ink" />
                     More options
                   </button>
-                  <button
-                    type="button"
-                    className="icon-btn icon-btn-soft icon-btn-sm"
-                    aria-label="Close"
-                    onClick={() => onPanel(false)}
-                  >
+                  <button type="button" className="icon-btn icon-btn-soft icon-btn-sm" aria-label="Close" onClick={() => onPanel(false)}>
                     <Icon name="x" size={18} strokeWidth={2} />
                   </button>
                 </div>
@@ -210,13 +146,7 @@ export default function Explorer({
                   <span className="group-label">Question</span>
                   <div className="row row-tight">
                     {VARS.map((v) => (
-                      <Pill
-                        key={v.id}
-                        on={v.id === view.vdef.id}
-                        onClick={() =>
-                          onChange({ variable: v.id as VariableId })
-                        }
-                      >
+                      <Pill key={v.id} on={v.id === view.vdef.id} onClick={() => onChange({ variable: v.id as VariableId })}>
                         <Icon name={v.icon} size={16} className="accent-ink" />
                         {v.short}
                       </Pill>
@@ -224,8 +154,7 @@ export default function Explorer({
                   </div>
                   {view.custom && (
                     <span className="tiny muted">
-                      Showing your own choice: {view.vdef.short}. Open “More
-                      options” to change it.
+                      Showing your own choice: {view.vdef.short}. Open “More options” to change it.
                     </span>
                   )}
                 </div>
@@ -233,11 +162,7 @@ export default function Explorer({
 
               {detailed && (
                 <>
-                  <div
-                    role="radiogroup"
-                    aria-label="Variable"
-                    className="stack-8"
-                  >
+                  <div role="radiogroup" aria-label="Variable" className="stack-8">
                     <span className="group-label">Variable</span>
                     {BASE_VARS.map((b) => (
                       <button
@@ -246,17 +171,14 @@ export default function Explorer({
                         role="radio"
                         aria-checked={b.id === view.base.id}
                         className="choice choice-variable"
-                        onClick={() =>
-                          onChange({ custom: { variable: b.id, months } })
-                        }
+                        onClick={() => onChange({ custom: { variable: b.id, months } })}
                       >
                         <span className="round-icon round-icon-sm">
                           <Icon name={b.icon} />
                         </span>
                         <span className="stack-2">
                           <span className="small strong">
-                            {b.name}{" "}
-                            <span className="tiny muted">· {b.group}</span>
+                            {b.name} <span className="tiny muted">· {b.group}</span>
                           </span>
                           <span className="tiny muted">{b.def}</span>
                           <span className="tiny muted">{coverage(b.id)}</span>
@@ -266,23 +188,10 @@ export default function Explorer({
                   </div>
 
                   <div role="group" aria-label="Months" className="stack-8">
-                    <span className="group-label">
-                      Months · {monthsText(months)}
-                    </span>
+                    <span className="group-label">Months · {monthsText(months)}</span>
                     <div className="row row-tight">
                       {MONTH_SETS.map((m) => (
-                        <Pill
-                          key={m.id}
-                          on={sameSet(m.months, months)}
-                          onClick={() =>
-                            onChange({
-                              custom: {
-                                variable: view.base.id,
-                                months: m.months,
-                              },
-                            })
-                          }
-                        >
+                        <Pill key={m.id} on={sameSet(m.months, months)} onClick={() => onChange({ custom: { variable: view.base.id, months: m.months } })}>
                           {m.label}
                         </Pill>
                       ))}
@@ -301,10 +210,7 @@ export default function Explorer({
                         </button>
                       ))}
                     </div>
-                    <span className="tiny muted">
-                      Tap months to build your own season. Only complete seasons
-                      are counted.
-                    </span>
+                    <span className="tiny muted">Tap months to build your own season. Only complete seasons are counted.</span>
                   </div>
                 </>
               )}
@@ -313,11 +219,7 @@ export default function Explorer({
                 <span className="group-label">Place</span>
                 <div className="row row-tight">
                   {view.places.map((r) => (
-                    <Pill
-                      key={r.id}
-                      on={r.id === view.region.id}
-                      onClick={() => onChange({ region: r.id })}
-                    >
+                    <Pill key={r.id} on={r.id === view.region.id} onClick={() => onChange({ region: r.id })}>
                       {r.name}
                     </Pill>
                   ))}
@@ -329,14 +231,8 @@ export default function Explorer({
                   <span className="group-label">Record</span>
                   <div className="row row-tight">
                     {view.datasets.map((d, i) => (
-                      <Pill
-                        key={d.id}
-                        on={view.dataset === d.id}
-                        onClick={() => onChange({ dataset: d.id })}
-                      >
-                        {detailed
-                          ? `NASA ${d.name} · since ${d.since}`
-                          : `Since ${d.since} · ${i === 0 ? "detailed" : "longer"}`}
+                      <Pill key={d.id} on={view.dataset === d.id} onClick={() => onChange({ dataset: d.id })}>
+                        {detailed ? `NASA ${d.name} · since ${d.since}` : `Since ${d.since} · ${i === 0 ? "detailed" : "longer"}`}
                       </Pill>
                     ))}
                   </div>
@@ -346,22 +242,10 @@ export default function Explorer({
               <div role="group" aria-label="Period" className="stack-8">
                 <span className="group-label">Period</span>
                 <div className="row row-tight">
-                  <Pill
-                    on={!view.explore}
-                    onClick={() => onChange({ periodMode: "full" })}
-                  >
+                  <Pill on={!view.explore} onClick={() => onChange({ periodMode: "full" })}>
                     Full record · {view.periodText}
                   </Pill>
-                  <Pill
-                    on={view.explore}
-                    onClick={() =>
-                      onChange({
-                        periodMode: "explore",
-                        startYear: sY,
-                        endYear: eY,
-                      })
-                    }
-                  >
+                  <Pill on={view.explore} onClick={() => onChange({ periodMode: "explore", startYear: sY, endYear: eY })}>
                     Choose years
                   </Pill>
                 </div>
@@ -371,28 +255,12 @@ export default function Explorer({
                 <div className="row steppers">
                   {steppers.map((st) => (
                     <div key={st.label} className="stepper">
-                      <span className="small muted stepper-label">
-                        {st.label}
-                      </span>
-                      <button
-                        type="button"
-                        className="icon-btn icon-btn-sm"
-                        aria-label={st.downLabel}
-                        disabled={!st.canDown}
-                        onClick={st.down}
-                      >
+                      <span className="small muted stepper-label">{st.label}</span>
+                      <button type="button" className="icon-btn icon-btn-sm" aria-label={st.downLabel} disabled={!st.canDown} onClick={st.down}>
                         −
                       </button>
-                      <span className="num strong stepper-value">
-                        {st.value}
-                      </span>
-                      <button
-                        type="button"
-                        className="icon-btn icon-btn-sm"
-                        aria-label={st.upLabel}
-                        disabled={!st.canUp}
-                        onClick={st.up}
-                      >
+                      <span className="num strong stepper-value">{st.value}</span>
+                      <button type="button" className="icon-btn icon-btn-sm" aria-label={st.upLabel} disabled={!st.canUp} onClick={st.up}>
                         +
                       </button>
                     </div>
@@ -406,12 +274,7 @@ export default function Explorer({
 
       {/* what you are looking at + verdict */}
       <section aria-labelledby="ev-head" className={"verdict" + hl("headline")}>
-        <button
-          type="button"
-          className={"summary-chip" + hl("case")}
-          aria-label="Adjust what you see"
-          onClick={() => onPanel(!panelOpen)}
-        >
+        <button type="button" className={"summary-chip" + hl("case")} aria-label="Adjust what you see" onClick={() => onPanel(!panelOpen)}>
           <span>
             <Icon name={view.vdef.icon} size={16} />
             {view.vdef.short}
@@ -431,19 +294,11 @@ export default function Explorer({
         </h1>
 
         <div className={"row row-tight badges" + hl("badges")}>
-          <button
-            type="button"
-            className="badge badge-btn"
-            onClick={() => onTerm("trend")}
-          >
+          <button type="button" className="badge badge-btn" onClick={() => onTerm("trend")}>
             <Icon name={view.direction.icon} size={18} strokeWidth={1.9} />
             <span className="dotted">{view.direction.label}</span>
           </button>
-          <button
-            type="button"
-            className={`badge badge-btn badge-${rec.status}`}
-            onClick={() => onTerm(rec.status)}
-          >
+          <button type="button" className={`badge badge-btn badge-${rec.status}`} onClick={() => onTerm(rec.status)}>
             <Icon name={view.badge.icon} size={18} strokeWidth={1.9} />
             <span className="dotted">{view.badge.label}</span>
           </button>
@@ -461,22 +316,14 @@ export default function Explorer({
             <span className="small muted">Change per decade</span>
             <span className="num big">{view.rate}</span>
             {view.rateSub && <span className="tiny muted">{view.rateSub}</span>}
-            <span className="tiny muted">
-              likely {view.sure.range.replace(/ per decade$/, "")}
-            </span>
+            <span className="tiny muted">likely {view.sure.range.replace(/ per decade$/, "")}</span>
           </div>
           <div className="key-number">
-            <span className="small muted">
-              Change along the trend line, {view.periodText}
-            </span>
+            <span className="small muted">Change along the trend line, {view.periodText}</span>
             <span className="num big">{view.total}</span>
           </div>
           <div className="key-number">
-            <button
-              type="button"
-              className="term term-muted"
-              onClick={() => onTerm("p_value")}
-            >
+            <button type="button" className="term term-muted" onClick={() => onTerm("p_value")}>
               p-value
             </button>
             <span className="num big">{view.pDisplay}</span>
@@ -498,307 +345,224 @@ export default function Explorer({
 
       {/* card deck + where */}
       <div className="evidence">
-        <section aria-label="Evidence cards" className="deck">
-          <div className="deck-peek deck-peek-2" aria-hidden="true" />
-          <div className="deck-peek deck-peek-1" aria-hidden="true" />
-          <div className={"panel deck-card" + deckHl}>
-            <div className="deck-head">
-              <div className="stack-2">
-                <span className="group-label">
-                  Card {cardIdx + 1} of {cards.length}
-                </span>
-                <h2 className="h3">{cards[cardIdx].title}</h2>
+        <div className="evidence-main">
+          <section aria-label="Evidence cards" className="deck">
+            <div className="deck-peek deck-peek-2" aria-hidden="true" />
+            <div className="deck-peek deck-peek-1" aria-hidden="true" />
+            <div className={"panel deck-card" + deckHl}>
+              <div className="deck-head">
+                <div className="stack-2">
+                  <span className="group-label">
+                    Card {cardIdx + 1} of {cards.length}
+                  </span>
+                  <h2 className="h3">{cards[cardIdx].title}</h2>
+                </div>
+                <div className="row row-center deck-nav">
+                  <span className="dots" aria-hidden="true">
+                    {cards.map((c, i) => (
+                      <span key={c.id} className={i === cardIdx ? "dot is-current dot-sm" : "dot"} />
+                    ))}
+                  </span>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label="Previous card"
+                    onClick={() => onCard((cardIdx + cards.length - 1) % cards.length)}
+                  >
+                    <Icon name="arrowL" size={18} strokeWidth={2} />
+                  </button>
+                  <button type="button" className="icon-btn icon-btn-primary" aria-label="Next card" onClick={() => onCard((cardIdx + 1) % cards.length)}>
+                    <Icon name="arrowR" size={18} strokeWidth={2} />
+                  </button>
+                </div>
               </div>
-              <div className="row row-center deck-nav">
-                <span className="dots" aria-hidden="true">
-                  {cards.map((c, i) => (
-                    <span
-                      key={c.id}
-                      className={
-                        i === cardIdx ? "dot is-current dot-sm" : "dot"
-                      }
-                    />
-                  ))}
-                </span>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Previous card"
-                  onClick={() =>
-                    onCard((cardIdx + cards.length - 1) % cards.length)
-                  }
-                >
-                  <Icon name="arrowL" size={18} strokeWidth={2} />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn icon-btn-primary"
-                  aria-label="Next card"
-                  onClick={() => onCard((cardIdx + 1) % cards.length)}
-                >
-                  <Icon name="arrowR" size={18} strokeWidth={2} />
-                </button>
-              </div>
-            </div>
 
-            <div aria-live="polite">
-              {cur === "series" && (
-                <div className="stack-12">
-                  <div className="legend">
-                    <span>
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 14 14"
-                        aria-hidden="true"
-                      >
-                        <circle cx="7" cy="7" r="3.5" fill="var(--series)" />
-                      </svg>
-                      Each {view.perWord}
-                    </span>
-                    <span>
-                      <svg
-                        width="22"
-                        height="14"
-                        viewBox="0 0 22 14"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M1 7h20"
-                          stroke="var(--trend)"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      Trend
-                    </span>
-                    <span>
-                      <svg
-                        width="22"
-                        height="14"
-                        viewBox="0 0 22 14"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M1 7h20"
-                          stroke="var(--mean-line)"
-                          strokeWidth="2"
-                          strokeDasharray="3 4"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      Average
-                    </span>
-                  </div>
-                  <SeriesChart view={view} />
-                  {view.window && (
-                    <div className="window-strip">
-                      <span
-                        className={`badge badge-sm badge-${view.window.status}`}
-                      >
-                        <Icon
-                          name={
-                            view.window.status === "significant"
-                              ? "check"
-                              : "minus"
-                          }
-                          size={16}
-                          strokeWidth={1.9}
-                        />
-                        {view.window.status === "significant"
-                          ? "Significant"
-                          : "Not significant"}
+              <div aria-live="polite">
+                {cur === "series" && (
+                  <div className="stack-12">
+                    <div className="legend">
+                      <span>
+                        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                          <circle cx="7" cy="7" r="3.5" fill="var(--series)" />
+                        </svg>
+                        Each {view.perWord}
                       </span>
-                      <span className="num small">{view.windowText}</span>
-                      {view.window.shortPeriodWarning && (
-                        <span className="small warn">
-                          Short periods can mislead.
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        className="link-btn window-back"
-                        onClick={() => onChange({ periodMode: "full" })}
-                      >
-                        Back to full record
-                      </button>
+                      <span>
+                        <svg width="22" height="14" viewBox="0 0 22 14" aria-hidden="true">
+                          <path d="M1 7h20" stroke="var(--trend)" strokeWidth="2.5" strokeLinecap="round" />
+                        </svg>
+                        Trend
+                      </span>
+                      <span>
+                        <svg width="22" height="14" viewBox="0 0 22 14" aria-hidden="true">
+                          <path d="M1 7h20" stroke="var(--mean-line)" strokeWidth="2" strokeDasharray="3 4" strokeLinecap="round" />
+                        </svg>
+                        Average
+                      </span>
                     </div>
-                  )}
-                </div>
-              )}
-
-              {cur === "sure" && (
-                <div className="stack-12">
-                  <div className="second-row">
-                    <span className="stack-0">
-                      <span className="strong">
-                        <Term id="range" onTerm={onTerm}>
-                          Likely range
-                        </Term>{" "}
-                        of the change
-                      </span>
-                      <span className="small muted">{view.sure.rangeNote}</span>
-                    </span>
-                    <span className="num strong">{view.sure.range}</span>
-                  </div>
-                  <div className="second-row">
-                    <span className="stack-0">
-                      <span className="strong">
-                        <Term id="dependence" onTerm={onTerm}>
-                          Year-to-year dependence
-                        </Term>
-                      </span>
-                      <span className="small muted">{view.sure.depend}</span>
-                    </span>
-                  </div>
-                  <p className="small muted">
-                    The rate of change is an estimate from {rec.values.length}{" "}
-                    {view.perWord}s of data. These two checks show how far to
-                    trust it.
-                  </p>
-                </div>
-              )}
-
-              {cur === "compare" && (
-                <div className="stack-12">
-                  <p className="lead">{view.compare.note}</p>
-                  {view.compare.rows.map((row) => (
-                    <button
-                      key={row.id}
-                      type="button"
-                      className="second-row compare-row"
-                      aria-pressed={row.current}
-                      onClick={() =>
-                        onChange({ custom: { variable: row.id, months } })
-                      }
-                    >
-                      <span className="row row-center row-tight compare-name">
-                        <span className="round-icon round-icon-sm">
-                          <Icon name={row.icon} />
+                    <SeriesChart view={view} />
+                    {view.window && (
+                      <div className="window-strip">
+                        <span className={`badge badge-sm badge-${view.window.status}`}>
+                          <Icon name={view.window.status === "significant" ? "check" : "minus"} size={16} strokeWidth={1.9} />
+                          {view.window.status === "significant" ? "Significant" : "Not significant"}
                         </span>
-                        <span className="stack-0">
-                          <span className="strong">{row.name}</span>
-                          <span className="tiny muted">{row.sub}</span>
-                        </span>
-                      </span>
-                      <span className="row row-center row-tight">
-                        <Icon
-                          name={row.direction}
-                          size={18}
-                          strokeWidth={1.9}
-                        />
-                        <span className="num small">{row.value}</span>
-                        <span
-                          className={`badge badge-sm badge-${row.badge.status}`}
-                        >
-                          <Icon
-                            name={row.badge.icon}
-                            size={14}
-                            strokeWidth={2}
-                          />
-                          {row.badge.label}
-                        </span>
-                      </span>
-                    </button>
-                  ))}
-                  <p className="small muted">
-                    {view.region.name},{" "}
-                    {months.length === 12 ? "whole year" : monthsText(months)}.
-                    Each variable uses its own NASA record, so the years differ.
-                  </p>
-                </div>
-              )}
-
-              {cur === "years" && (
-                <div className="card-split">
-                  <div className="card-text">
-                    <p className="lead">{view.moreYears.caption}</p>
-                    <p className="small muted">
-                      The line shows the{" "}
-                      <Term id="p_value" onTerm={onTerm}>
-                        p-value
-                      </Term>{" "}
-                      for the latest 15 {view.perWord}s, then 16, and so on up
-                      to the full record. Below the dashed line means{" "}
-                      <Term id="significant" onTerm={onTerm}>
-                        significant
-                      </Term>
-                      .
-                    </p>
+                        <span className="num small">{view.windowText}</span>
+                        {view.window.shortPeriodWarning && <span className="small warn">Short periods can mislead.</span>}
+                        <button type="button" className="link-btn window-back" onClick={() => onChange({ periodMode: "full" })}>
+                          Back to full record
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <MoreYearsChart view={view} />
-                </div>
-              )}
+                )}
 
-              {cur === "rhythm" && (
-                <div className="card-split">
-                  <div className="card-text">
-                    <p className="lead">{view.rhythmText}</p>
-                    <p className="small muted">
-                      This regular pattern is the{" "}
-                      <Term id="seasonal_cycle" onTerm={onTerm}>
-                        seasonal cycle
-                      </Term>
-                      .
-                    </p>
-                  </div>
-                  <RhythmChart view={view} />
-                </div>
-              )}
-
-              {cur === "second" && view.second && (
-                <div className="stack-12">
-                  <p className="lead">{view.second.note}</p>
-                  {view.second.rows.map((so) => (
-                    <div key={so.name} className="second-row">
+                {cur === "sure" && (
+                  <div className="stack-12">
+                    <div className="second-row">
                       <span className="stack-0">
-                        <span className="strong">{so.name}</span>
-                        <span className="tiny muted">{so.sub}</span>
-                      </span>
-                      <span className="row row-center row-tight">
-                        <span className="num small">{so.value}</span>
-                        <span
-                          className={`badge badge-sm badge-${so.badge.status}`}
-                        >
-                          <Icon
-                            name={so.badge.icon}
-                            size={14}
-                            strokeWidth={2}
-                          />
-                          {so.badge.label}
+                        <span className="strong">
+                          <Term id="range" onTerm={onTerm}>
+                            Likely range
+                          </Term>{" "}
+                          of the change
                         </span>
+                        <span className="small muted">{view.sure.rangeNote}</span>
+                      </span>
+                      <span className="num strong">{view.sure.range}</span>
+                    </div>
+                    <div className="second-row">
+                      <span className="stack-0">
+                        <span className="strong">
+                          <Term id="dependence" onTerm={onTerm}>
+                            Year-to-year dependence
+                          </Term>
+                        </span>
+                        <span className="small muted">{view.sure.depend}</span>
                       </span>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <p className="small muted">
+                      The rate of change is an estimate from {rec.values.length} {view.perWord}s of data. These two checks show how far to
+                      trust it.
+                    </p>
+                  </div>
+                )}
+
+                {cur === "compare" && (
+                  <div className="stack-12">
+                    <p className="lead">{view.compare.note}</p>
+                    {view.compare.rows.map((row) => (
+                      <button
+                        key={row.id}
+                        type="button"
+                        className="second-row compare-row"
+                        aria-pressed={row.current}
+                        onClick={() => onChange({ custom: { variable: row.id, months } })}
+                      >
+                        <span className="row row-center row-tight compare-name">
+                          <span className="round-icon round-icon-sm">
+                            <Icon name={row.icon} />
+                          </span>
+                          <span className="stack-0">
+                            <span className="strong">{row.name}</span>
+                            <span className="tiny muted">{row.sub}</span>
+                          </span>
+                        </span>
+                        <span className="row row-center row-tight">
+                          <Icon name={row.direction} size={18} strokeWidth={1.9} />
+                          <span className="num small">{row.value}</span>
+                          <span className={`badge badge-sm badge-${row.badge.status}`}>
+                            <Icon name={row.badge.icon} size={14} strokeWidth={2} />
+                            {row.badge.label}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                    <p className="small muted">
+                      {view.region.name}, {months.length === 12 ? "whole year" : monthsText(months)}. Each variable uses its own NASA record, so the years differ.
+                    </p>
+                  </div>
+                )}
+
+                {cur === "years" && (
+                  <div className="card-split">
+                    <div className="card-text">
+                      <p className="lead">{view.moreYears.caption}</p>
+                      <p className="small muted">
+                        The line shows the{" "}
+                        <Term id="p_value" onTerm={onTerm}>
+                          p-value
+                        </Term>{" "}
+                        for the latest 15 {view.perWord}s, then 16, and so on up to the full record. Below the dashed line means{" "}
+                        <Term id="significant" onTerm={onTerm}>
+                          significant
+                        </Term>
+                        .
+                      </p>
+                    </div>
+                    <MoreYearsChart view={view} />
+                  </div>
+                )}
+
+                {cur === "rhythm" && (
+                  <div className="card-split">
+                    <div className="card-text">
+                      <p className="lead">{view.rhythmText}</p>
+                      <p className="small muted">
+                        This regular pattern is the{" "}
+                        <Term id="seasonal_cycle" onTerm={onTerm}>
+                          seasonal cycle
+                        </Term>
+                        .
+                      </p>
+                    </div>
+                    <RhythmChart view={view} />
+                  </div>
+                )}
+
+                {cur === "second" && view.second && (
+                  <div className="stack-12">
+                    <p className="lead">{view.second.note}</p>
+                    {view.second.rows.map((so) => (
+                      <div key={so.name} className="second-row">
+                        <span className="stack-0">
+                          <span className="strong">{so.name}</span>
+                          <span className="tiny muted">{so.sub}</span>
+                        </span>
+                        <span className="row row-center row-tight">
+                          <span className="num small">{so.value}</span>
+                          <span className={`badge badge-sm badge-${so.badge.status}`}>
+                            <Icon name={so.badge.icon} size={14} strokeWidth={2} />
+                            {so.badge.label}
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+
+          {/* directly under the cards, so the taller panel beside them never pushes it down */}
+          <a className={"btn btn-primary btn-lg verdict-btn" + hl("verdict")} href="#/case">
+            Close the case: see the verdict
+            <Icon name="arrowR" strokeWidth={2} />
+          </a>
+        </div>
 
         {view.where && (
-          <section
-            aria-labelledby="where-title"
-            className={"panel where" + hl("where")}
-          >
+          <section aria-labelledby="where-title" className={"panel where" + hl("where")}>
             <div className="stack-2">
               <h2 id="where-title" className="h3">
                 Where is it changing?
               </h2>
               <p className="small muted">{view.where.intro}</p>
             </div>
-            <RegionMap
-              fills={view.mapFills}
-              labels={view.mapLabels}
-              selected={view.region.id}
-              onPick={(id) => onChange({ region: id })}
-            />
+            <RegionMap fills={view.mapFills} labels={view.mapLabels} selected={view.region.id} onPick={(id) => onChange({ region: id })} />
             <div className="stack-2">
               {view.where.rows.map((r) => {
-                const w = Math.min(
-                  50,
-                  (Math.abs(r.amount) / view.where!.scale) * 50,
-                );
+                const w = Math.min(50, (Math.abs(r.amount) / view.where!.scale) * 50);
                 return (
                   <button
                     key={r.id}
@@ -815,22 +579,13 @@ export default function Explorer({
                         style={{
                           left: r.amount < 0 ? `${50 - w}%` : "50%",
                           width: `${w}%`,
-                          background:
-                            r.amount < 0
-                              ? "var(--dry-strong)"
-                              : "var(--wet-strong)",
+                          background: r.amount < 0 ? "var(--dry-strong)" : "var(--wet-strong)",
                         }}
                       />
                     </span>
                     <span className="region-value">
                       <span className="num small">{r.value}</span>
-                      <Icon
-                        name={r.badge.icon}
-                        size={18}
-                        strokeWidth={1.9}
-                        label={r.badge.label}
-                        className={`tone-${r.badge.status}`}
-                      />
+                      <Icon name={r.badge.icon} size={18} strokeWidth={1.9} label={r.badge.label} className={`tone-${r.badge.status}`} />
                     </span>
                   </button>
                 );
@@ -843,13 +598,6 @@ export default function Explorer({
             </a>
           </section>
         )}
-      </div>
-
-      <div className="row">
-        <a className={"btn btn-primary btn-lg" + hl("verdict")} href="#/case">
-          Close the case: see the verdict
-          <Icon name="arrowR" strokeWidth={2} />
-        </a>
       </div>
     </main>
   );

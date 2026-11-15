@@ -6,10 +6,8 @@ export default function Map3D() {
       <section className="stack-12">
         <h1 className="title">Cyprus in 3D</h1>
         <p className="lead muted">
-          NASA SRTM terrain with the GPM IMERG mean precipitation map. Press{" "}
-          <strong>Start simulation</strong> to let it rain and watch the
-          standing water slowly fill the flat hollows. Wetter places fill up
-          more.
+          Terrain from the NISAR elevation model with the average rainfall map from NASA GPM IMERG. Press <strong>Start simulation</strong> to let it rain and
+          watch the standing water slowly fill the flat hollows. Wetter places fill up more.
         </p>
       </section>
       <TerrainMap3D />
